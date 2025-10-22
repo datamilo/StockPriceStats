@@ -15,6 +15,10 @@ import numpy as np
 from datetime import timedelta
 import plotly.graph_objects as go
 from pathlib import Path
+import warnings
+
+# Suppress Plotly's deprecation warnings about keyword arguments
+warnings.filterwarnings('ignore', message='The keyword arguments have been deprecated')
 
 # Configuration - paths relative to this script file
 SCRIPT_DIR = Path(__file__).parent.resolve()
@@ -272,10 +276,13 @@ def main():
         xaxis_title="Date",
         template='plotly_white',
         height=600,
-        hovermode='x unified'
+        hovermode='x unified',
+        margin=dict(l=0, r=0, t=40, b=0)
     )
 
-    st.plotly_chart(fig, width='stretch', config={'responsive': True, 'displayModeBar': True})
+    # Display with proper config
+    config = {'responsive': True, 'displayModeBar': True, 'displaylogo': False}
+    st.plotly_chart(fig, config=config)
 
     # Show data table
     st.subheader("Price Data Table")
