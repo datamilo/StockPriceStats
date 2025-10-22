@@ -31,22 +31,27 @@ st.write("Lightweight explorer for single-stock analysis")
 def load_all_price_data():
     """Load price data once and cache it"""
     data_file = str(DATA_FILE)
-    if not Path(data_file).exists():
-        st.error(f"Data file not found: {data_file}")
-        st.stop()
 
-    df = pd.read_parquet(data_file)
-    df['date'] = pd.to_datetime(df['date'])
-    df = df.sort_values(['name', 'date']).reset_index(drop=True)
-    df = df.rename(columns={
-        'date': 'Date',
-        'name': 'Stock',
-        'low': 'Low',
-        'high': 'High',
-        'close': 'Close',
-        'open': 'Open'
-    })
-    return df
+    try:
+        df = pd.read_parquet(data_file)
+        df['date'] = pd.to_datetime(df['date'])
+        df = df.sort_values(['name', 'date']).reset_index(drop=True)
+        df = df.rename(columns={
+            'date': 'Date',
+            'name': 'Stock',
+            'low': 'Low',
+            'high': 'High',
+            'close': 'Close',
+            'open': 'Open'
+        })
+        return df
+    except FileNotFoundError as e:
+        st.error(f"❌ Data file not found at: {data_file}")
+        st.info(f"Expected to find price_data_filtered.parquet in the StockPriceStats root directory")
+        raise
+    except Exception as e:
+        st.error(f"❌ Error loading data: {e}")
+        raise
 
 @st.cache_data
 def load_results_for_period(period_name):
@@ -75,6 +80,13 @@ def calculate_rolling_low(stock_data, period_days):
 
 def main():
     """Main app logic"""
+
+    # Debug info (will show in Streamlit Cloud logs)
+    import sys
+    print(f"DEBUG: Python path: {sys.executable}")
+    print(f"DEBUG: Script dir: {SCRIPT_DIR}")
+    print(f"DEBUG: Data file path: {DATA_FILE}")
+    print(f"DEBUG: Data file exists: {Path(DATA_FILE).exists()}")
 
     # Load data
     with st.spinner("Loading price data..."):
