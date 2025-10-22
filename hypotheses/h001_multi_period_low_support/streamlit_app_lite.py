@@ -16,9 +16,10 @@ from datetime import timedelta
 import plotly.graph_objects as go
 from pathlib import Path
 
-# Configuration
-DATA_FILE = '../../price_data_filtered.parquet'
-H001_RESULTS_DIR = '.'
+# Configuration - paths relative to this script file
+SCRIPT_DIR = Path(__file__).parent.resolve()
+DATA_FILE = SCRIPT_DIR / '../../price_data_filtered.parquet'
+H001_RESULTS_DIR = SCRIPT_DIR
 
 # Page config
 st.set_page_config(page_title="H001 Support Level Analyzer", layout="wide")
@@ -29,7 +30,12 @@ st.write("Lightweight explorer for single-stock analysis")
 @st.cache_data
 def load_all_price_data():
     """Load price data once and cache it"""
-    df = pd.read_parquet(DATA_FILE)
+    data_file = str(DATA_FILE)
+    if not Path(data_file).exists():
+        st.error(f"Data file not found: {data_file}")
+        st.stop()
+
+    df = pd.read_parquet(data_file)
     df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values(['name', 'date']).reset_index(drop=True)
     df = df.rename(columns={
@@ -48,7 +54,7 @@ def load_results_for_period(period_name):
     file = f'{period_name.lower().replace(" ", "_").replace("-", "_")}_detailed_results.parquet'
     filepath = Path(H001_RESULTS_DIR) / file
     if filepath.exists():
-        return pd.read_parquet(filepath)
+        return pd.read_parquet(str(filepath))
     return None
 
 def calculate_rolling_low(stock_data, period_days):
