@@ -70,7 +70,8 @@ def load_results_for_period(period_name):
         # This is much faster than loading all columns
         cols_to_load = [
             'stock', 'support_date', 'support_level',
-            'wait_days', 'success', 'days_to_break'
+            'wait_days', 'success', 'days_to_break', 'break_pct',
+            'expiry_days'
         ]
 
         # Try to load only the columns we need
