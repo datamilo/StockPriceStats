@@ -330,9 +330,10 @@ def calculate_downside_risk(period_name):
                 break_pcts = break_pcts.dropna()
 
                 if len(break_pcts) > 0:
-                    # break_pct is negative, so take absolute value
-                    avg_downside = abs(break_pcts.mean()) * 100  # Convert to percentage
-                    max_downside = abs(break_pcts.min()) * 100   # Worst case
+                    # break_pct is already in decimal format (e.g., -0.087796 = -8.78%)
+                    # Just take absolute value (negative indicates downside)
+                    avg_downside = abs(break_pcts.mean())
+                    max_downside = abs(break_pcts.min())   # Worst case (most negative)
 
                     stock_stats.append({
                         'Stock': stock,
