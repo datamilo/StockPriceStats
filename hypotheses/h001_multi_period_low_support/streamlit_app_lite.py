@@ -231,64 +231,21 @@ def main():
         hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Rolling Low: %{y:.2f}<extra></extra>'
     ))
 
-    # Add support level markers - show where supports were broken
-    # These are based on the true rolling low (calculated from full dataset)
-    if results is not None and len(results) > 0:
-        # Filter results for 0 wait days (immediate support identification)
-        immediate_supports = results[results['wait_days'] == 0].copy()
+    # Highlight where price ACTUALLY broke through the rolling low
+    # A break means: Low price for the day < Rolling low for that day
+    breaks = stock_data[stock_data['Low'] < stock_data['rolling_low']].copy()
 
-        if len(immediate_supports) > 0:
-                # Group by support_date and get unique levels
-                unique_supports = immediate_supports[['support_date', 'support_level']].drop_duplicates()
-                unique_supports = unique_supports.sort_values('support_date')
+    if len(breaks) > 0:
+        fig.add_trace(go.Scatter(
+            x=breaks['Date'],
+            y=breaks['Low'],
+            mode='markers',
+            name='Support Broken',
+            marker=dict(color='red', size=10, symbol='circle'),
+            hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Price Broke Support at: %{y:.2f} kr<extra></extra>'
+        ))
 
-                # For each support, determine if ANY test was successful (optimistic)
-                support_success = {}
-                for _, row in immediate_supports.iterrows():
-                    date = row['support_date']
-                    level = row['support_level']
-                    success = row['success']
-                    key = (date, level)
-                    if key not in support_success:
-                        support_success[key] = []
-                    if pd.notna(success):
-                        support_success[key].append(success)
-
-                # Determine which supports were broken (failed)
-                # Skip supports with no valid test data (all None)
-                broken_supports = []
-
-                for date, level in support_success:
-                    test_results = support_success[(date, level)]
-
-                    # Only show if we have valid test data AND it was broken
-                    if len(test_results) > 0 and not any(test_results):
-                        broken_supports.append((date, level))
-
-                # Add broken supports (red) - positioned at the actual low price for that day
-                if broken_supports:
-                    broken_dates = []
-                    broken_prices = []
-
-                    for date, level in broken_supports:
-                        broken_dates.append(date)
-                        # Get the actual low price for this date from the stock data
-                        day_data = stock_data[stock_data['Date'] == date]
-                        if len(day_data) > 0:
-                            broken_prices.append(day_data['Low'].iloc[0])
-                        else:
-                            broken_prices.append(level)
-
-                    fig.add_trace(go.Scatter(
-                        x=broken_dates,
-                        y=broken_prices,
-                        mode='markers',
-                        name='Support Broken',
-                        marker=dict(color='red', size=8, symbol='circle'),
-                        hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Support Broken at: %{y:.2f}<extra></extra>'
-                    ))
-
-                    st.write(f"**Supports Broken:** {len(broken_supports)}")
+        st.write(f"**Supports Broken:** {len(breaks)} dates where price went below rolling low")
 
     # Update layout
     fig.update_layout(
