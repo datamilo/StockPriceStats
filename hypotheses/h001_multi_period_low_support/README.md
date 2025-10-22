@@ -88,11 +88,139 @@ Then open `http://localhost:8501` in your browser.
 ### On Streamlit Cloud
 If deployed, access the live app at the provided URL (no installation needed).
 
+---
+
+## Streamlit App Guide
+
+The Streamlit app has **two main tabs** for comprehensive analysis:
+
+### 📈 Tab 1: Stock Analysis
+**Single-stock deep dive with interactive visualization**
+
+**Controls:**
+- **Stock Selector:** Choose any of the 68 Nordic stocks
+- **Rolling Period:** Select 1-Month, 3-Month, 6-Month, 9-Month, or 1-Year
+- **Date Range Filter:** Analyze specific timeframes (defaults to 2024-present)
+
+**Displays:**
+1. **Price Chart** (Interactive Plotly)
+   - Daily candlesticks showing open/high/low/close
+   - Blue dashed line = rolling low support level
+   - Red dots = dates when support broke (new lower low identified)
+
+2. **Key Metrics**
+   - Data points in date range
+   - Latest closing price (kr)
+   - Period low (kr)
+
+3. **Support Level Performance Statistics**
+   - Total support levels tested
+   - Success rate % (with breakdown: ✓ successes / ✗ failures)
+   - Average days until support breaks
+   - Rolling low changes frequency
+   - Detailed breakdown of successful vs failed supports
+
+4. **Price Data Table** (Bottom)
+   - Complete OHLC data for selected date range
+   - Rolling low values for each day
+
+---
+
+### 🏆 Tab 2: Top Performers Analysis
+**Comprehensive metrics across all 68 stocks with 5 sub-tabs**
+
+**Master Control:**
+- **Period Selector:** Choose 1-Month, 3-Month, 6-Month, 9-Month, or 1-Year to analyze
+
+Each metric is calculated across all 68 stocks and displayed in the same time period.
+
+#### **Sub-Tab 1: 📈 Success Metrics**
+Identify high-performing stocks by success rate and opportunity frequency.
+
+**Success Rate** (Left):
+- Which stocks hold support most reliably?
+- Shows: Stock name, success %, successful/total tests
+- Top 5 performers highlighted
+- Full table with all 68 stocks
+- Summary: average success rate, best stock
+
+**Support Frequency** (Right):
+- Which stocks create new supports most often?
+- Shows: Stock name, supports/year, total supports
+- Top 5 performers highlighted
+- Full table ranked by frequency
+- Summary: average frequency, most active stock
+
+---
+
+#### **Sub-Tab 2: ⏱️ Resilience Metrics**
+Analyze how long supports last and how predictable they are.
+
+**Days to Break Support** (Left):
+- How many days before support typically breaks?
+- Shows: Stock name, avg days, number of breaks
+- Top 5 most resilient highlighted
+- Full table (higher days = more resilient)
+- Summary: average days, most resilient stock
+
+**Support Consistency** (Right):
+- How predictable are the breaks (lower stddev = more predictable)?
+- Shows: Stock name, stddev, mean days, breaks analyzed
+- Top 5 most consistent highlighted
+- Full table (lower stddev = easier to predict)
+- Summary: average stddev, most consistent stock
+
+---
+
+#### **Sub-Tab 3: 🛡️ Risk Metrics**
+Understand the downside when support eventually breaks.
+
+**Downside Risk When Support Breaks:**
+- Shows: Stock name, avg downside %, max downside %
+- Top 5 lowest-risk stocks highlighted
+- Full table (lower % = less risky)
+- Summary: average downside, lowest/highest risk stocks
+- **Interpretation:** Average % price drops below support when it breaks
+
+---
+
+#### **Sub-Tab 4: 🎯 Strategy Metrics**
+Optimize your put option writing strategy.
+
+**Best Option Expiry Period** (Left):
+- Which expiry (7d, 14d, 21d, 30d, 45d) works best?
+- Shows: Stock name, best expiry, success rate %
+- Top 5 with highest success rates
+- Full table with all expiry columns
+- Summary: average best rate, most optimal stock
+
+**Wait Time Effectiveness** (Right):
+- Does waiting after support identification improve results?
+- Shows: Stock name, immediate %, after wait %, improvement %
+- Top 5 with biggest improvements
+- Full table (positive % = waiting helps)
+- Summary: average improvement, count of stocks improving with wait
+
+---
+
+#### **Sub-Tab 5: 🗓️ Temporal Patterns**
+Identify seasonal trading opportunities.
+
+**Seasonal Patterns - Best & Worst Months:**
+- Which months are best for each stock?
+- Shows: Stock name, best month, worst month, success rates
+- Top 5 ranked by best month success rate
+- Full table with best/worst months and rates
+- Summary: average best rate, average worst rate, seasonal spread
+- **Interpretation:** Useful for timing premium collection strategies
+
+---
+
 ## Dataset
 
-- **Stocks:** 70 Nordic blue-chip stocks with liquid options markets
+- **Stocks:** 68 Nordic blue-chip stocks with liquid options markets
 - **Date Range:** 2000-2025 (25 years)
-- **Total Records:** 367K price records
+- **Total Records:** 359K price records (filtered for options-enabled stocks)
 - **Source:** `../../price_data_filtered.parquet`
 
 ## Example: How the Analysis Works
@@ -107,7 +235,7 @@ If deployed, access the live app at the provided URL (no installation needed).
    - If NO: ✗ Failure (price went below 150 kr, assignment risk)
 
 The analysis tested this exact scenario across:
-- **70 stocks** (Nordic options universe)
+- **68 stocks** (Nordic options universe)
 - **25 years** of historical data (2000-2025)
 - **All 5 rolling periods** (1, 3, 6, 9, 12 months)
 - **All wait times** (0-180 days, constrained by period)
@@ -128,19 +256,32 @@ Success rates show the historical probability that a put option would expire wor
 
 **Key Insight:** Shorter periods give equal or better success rates with far more trading opportunities.
 
-## Using the Streamlit App
+## Using the Streamlit App - Quick Start
 
-1. **Launch the app** (see instructions above)
-2. **Select a stock** from the dropdown (any of the 70)
-3. **Choose a rolling period** (1-month, 3-month, etc.)
-4. **Set your date range** to analyze a specific timeframe
-5. **View the chart** showing:
-   - Daily price candlesticks
-   - Rolling low line (blue dashed)
-   - Support breaks (red dots)
-6. **Scroll down** for detailed performance statistics
+**For Stock-Specific Analysis:**
+1. Go to **📈 Stock Analysis** tab
+2. Select a stock from the dropdown
+3. Choose a rolling period (start with 1-Month for most opportunities)
+4. Set your date range
+5. Study the price chart and support levels
+6. Review performance statistics at the bottom
 
-The app lets you explore the data interactively and understand why shorter-term rolling lows are better for put option writing.
+**For Comparative Analysis:**
+1. Go to **🏆 Top Performers** tab
+2. Choose your time period
+3. Navigate through the 5 sub-tabs to explore different metrics
+4. Use sub-tabs to identify:
+   - **Success Metrics** → Most reliable stocks
+   - **Resilience Metrics** → Longest-lasting supports
+   - **Risk Metrics** → Lowest assignment risk
+   - **Strategy Metrics** → Best expiry & wait time strategies
+   - **Temporal Patterns** → Best months for each stock
+
+**Pro Tips:**
+- Combine metrics: Look for stocks with high success rate AND low downside risk
+- Check seasonal patterns before writing puts
+- Use wait time effectiveness to decide when to enter positions
+- Compare across different rolling periods to find the best opportunity/reliability balance
 
 ---
 

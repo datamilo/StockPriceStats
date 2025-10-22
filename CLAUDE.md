@@ -21,16 +21,16 @@ This project analyzes stock price data to determine optimal put option writing s
 ## Dataset
 
 **Scope:**
-- **All Data:** 678K records, 2,101 stocks (2000-2025)
-- **Filtered Data:** 359K records, 69 Nordic stocks with liquid options markets
+- **All Data:** 678K records, 2,100 stocks (2000-2025)
+- **Filtered Data:** 359K records, 68 Nordic stocks with liquid options markets
 - **Geographic Focus:** Swedish, Norwegian, Danish, and Finnish blue-chip stocks
 
 **Data Files:**
 - `price_data_all.parquet` - Complete historical data
 - `price_data_filtered.parquet` - Filtered data (options-enabled stocks only)
-- `nasdaq_options_available.csv` - List of 69 stocks with available options
+- `nasdaq_options_available.csv` - List of 68 stocks with available options
 
-**Filtering Rationale:** Only stocks with liquid options markets can be used for this strategy, reducing the universe to 69 actionable candidates. (Note: Fortnox AB was delisted and removed from analysis)
+**Filtering Rationale:** Only stocks with liquid options markets can be used for this strategy, reducing the universe to 68 actionable candidates. (Note: Fortnox AB and Kindred Group plc were delisted and removed from analysis)
 
 ---
 
