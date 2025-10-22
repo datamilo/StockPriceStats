@@ -162,6 +162,54 @@ def calculate_stock_success_rates(period_name):
     return None
 
 
+def calculate_stock_resilience(period_name):
+    """Calculate average days to break support for all stocks in a given period"""
+    results = load_results_for_period(period_name)
+
+    if results is None or len(results) == 0:
+        return None
+
+    # Convert to datetime
+    results['support_date'] = pd.to_datetime(results['support_date'])
+
+    # Get only immediate supports (wait_days == 0)
+    immediate_supports = results[results['wait_days'] == 0].copy()
+
+    if len(immediate_supports) == 0:
+        return None
+
+    # Calculate resilience (days to break) per stock
+    stock_stats = []
+
+    for stock in immediate_supports['stock'].unique():
+        stock_results = immediate_supports[immediate_supports['stock'] == stock]
+
+        # Get failed supports with days to break
+        failed_results = stock_results[
+            (stock_results['success'] == False) &
+            (stock_results['days_to_break'].notna())
+        ]
+
+        if len(failed_results) > 0:
+            avg_days_to_break = failed_results['days_to_break'].mean()
+            total_failures = len(failed_results)
+
+            stock_stats.append({
+                'Stock': stock,
+                'Avg Days to Break': round(avg_days_to_break, 1),
+                'Failed Supports': total_failures,
+                'Resilience Score': round(avg_days_to_break * (total_failures / len(stock_results)), 1)
+            })
+
+    if stock_stats:
+        df_stats = pd.DataFrame(stock_stats)
+        # Sort by average days to break (higher is better - takes longer to break)
+        df_stats = df_stats.sort_values('Avg Days to Break', ascending=False)
+        return df_stats
+
+    return None
+
+
 def main():
     """Main app logic"""
 
@@ -416,62 +464,123 @@ def main():
 
     with tab2:
         st.subheader("Top Performers by Time Period")
-        st.write("Stocks ranked by support level success rate (immediate supports only)")
         st.write("---")
 
-        # Period selector for Top Performers
-        period_selector = st.radio(
-            "Select Time Period:",
-            options=[30, 90, 180, 270, 365],
-            format_func=lambda x: {30: "1-Month", 90: "3-Month", 180: "6-Month", 270: "9-Month", 365: "1-Year"}[x],
-            key="top_performers_period"
-        )
+        # Metric selector - choose what to rank by
+        col1, col2 = st.columns(2)
+
+        with col1:
+            metric_type = st.radio(
+                "Ranking Metric:",
+                options=["success_rate", "resilience"],
+                format_func=lambda x: {
+                    "success_rate": "📈 Success Rate",
+                    "resilience": "⏱️ Days to Break Support"
+                }[x],
+                key="metric_selector"
+            )
+
+        with col2:
+            # Period selector for Top Performers
+            period_selector = st.radio(
+                "Time Period:",
+                options=[30, 90, 180, 270, 365],
+                format_func=lambda x: {30: "1-Month", 90: "3-Month", 180: "6-Month", 270: "9-Month", 365: "1-Year"}[x],
+                key="top_performers_period"
+            )
 
         period_name_tp = {30: "1-Month", 90: "3-Month", 180: "6-Month", 270: "9-Month", 365: "1-Year"}[period_selector]
 
-        # Calculate and display top performers
-        with st.spinner(f"Calculating success rates for {period_name_tp} period..."):
-            top_performers = calculate_stock_success_rates(period_name_tp)
+        # Calculate and display based on selected metric
+        if metric_type == "success_rate":
+            st.write("Stocks ranked by support level success rate (immediate supports only)")
+            with st.spinner(f"Calculating success rates for {period_name_tp} period..."):
+                top_performers = calculate_stock_success_rates(period_name_tp)
 
-        if top_performers is not None and len(top_performers) > 0:
-            # Display top 5 as highlighted metrics
-            st.subheader(f"🏆 Top 5 Performers - {period_name_tp}")
-            top_5 = top_performers.head(5)
+            if top_performers is not None and len(top_performers) > 0:
+                # Display top 5 as highlighted metrics
+                st.subheader(f"🏆 Top 5 Performers - {period_name_tp}")
+                top_5 = top_performers.head(5)
 
-            cols = st.columns(5)
-            for idx, (_, row) in enumerate(top_5.iterrows()):
-                with cols[idx]:
-                    st.metric(
-                        row['Stock'],
-                        f"{row['Success Rate %']:.1f}%",
-                        f"{int(row['Successful'])}/{int(row['Total Supports'])}"
-                    )
+                cols = st.columns(5)
+                for idx, (_, row) in enumerate(top_5.iterrows()):
+                    with cols[idx]:
+                        st.metric(
+                            row['Stock'],
+                            f"{row['Success Rate %']:.1f}%",
+                            f"{int(row['Successful'])}/{int(row['Total Supports'])}"
+                        )
 
-            # Display full table
-            st.subheader(f"All Stocks - {period_name_tp}")
-            st.dataframe(
-                top_performers.reset_index(drop=True),
-                width='stretch',
-                hide_index=True
-            )
+                # Display full table
+                st.subheader(f"All Stocks - {period_name_tp}")
+                st.dataframe(
+                    top_performers.reset_index(drop=True),
+                    width='stretch',
+                    hide_index=True
+                )
 
-            # Summary statistics
-            st.subheader("Summary Statistics")
-            col1, col2, col3, col4 = st.columns(4)
+                # Summary statistics
+                st.subheader("Summary Statistics")
+                col1, col2, col3, col4 = st.columns(4)
 
-            with col1:
-                st.metric("Total Stocks Analyzed", len(top_performers))
-            with col2:
-                st.metric("Average Success Rate", f"{top_performers['Success Rate %'].mean():.1f}%")
-            with col3:
-                st.metric("Best Performing Stock", top_performers.iloc[0]['Stock'],
-                         f"{top_performers.iloc[0]['Success Rate %']:.1f}%")
-            with col4:
-                st.metric("Worst Performing Stock", top_performers.iloc[-1]['Stock'],
-                         f"{top_performers.iloc[-1]['Success Rate %']:.1f}%")
+                with col1:
+                    st.metric("Total Stocks Analyzed", len(top_performers))
+                with col2:
+                    st.metric("Average Success Rate", f"{top_performers['Success Rate %'].mean():.1f}%")
+                with col3:
+                    st.metric("Best Performing Stock", top_performers.iloc[0]['Stock'],
+                             f"{top_performers.iloc[0]['Success Rate %']:.1f}%")
+                with col4:
+                    st.metric("Worst Performing Stock", top_performers.iloc[-1]['Stock'],
+                             f"{top_performers.iloc[-1]['Success Rate %']:.1f}%")
 
-        else:
-            st.warning(f"No data available for {period_name_tp} period")
+            else:
+                st.warning(f"No data available for {period_name_tp} period")
+
+        else:  # resilience
+            st.write("Stocks ranked by average days to break support (longer is more resilient)")
+            with st.spinner(f"Calculating resilience metrics for {period_name_tp} period..."):
+                top_performers = calculate_stock_resilience(period_name_tp)
+
+            if top_performers is not None and len(top_performers) > 0:
+                # Display top 5 as highlighted metrics
+                st.subheader(f"🏆 Most Resilient Supports - {period_name_tp}")
+                top_5 = top_performers.head(5)
+
+                cols = st.columns(5)
+                for idx, (_, row) in enumerate(top_5.iterrows()):
+                    with cols[idx]:
+                        st.metric(
+                            row['Stock'],
+                            f"{row['Avg Days to Break']:.1f}d",
+                            f"{int(row['Failed Supports'])} breaks"
+                        )
+
+                # Display full table
+                st.subheader(f"All Stocks - {period_name_tp}")
+                st.dataframe(
+                    top_performers.reset_index(drop=True),
+                    width='stretch',
+                    hide_index=True
+                )
+
+                # Summary statistics
+                st.subheader("Summary Statistics")
+                col1, col2, col3, col4 = st.columns(4)
+
+                with col1:
+                    st.metric("Total Stocks Analyzed", len(top_performers))
+                with col2:
+                    st.metric("Average Days to Break", f"{top_performers['Avg Days to Break'].mean():.1f}d")
+                with col3:
+                    st.metric("Most Resilient Stock", top_performers.iloc[0]['Stock'],
+                             f"{top_performers.iloc[0]['Avg Days to Break']:.1f}d")
+                with col4:
+                    st.metric("Least Resilient Stock", top_performers.iloc[-1]['Stock'],
+                             f"{top_performers.iloc[-1]['Avg Days to Break']:.1f}d")
+
+            else:
+                st.warning(f"No resilience data available for {period_name_tp} period")
 
 if __name__ == '__main__':
     main()
