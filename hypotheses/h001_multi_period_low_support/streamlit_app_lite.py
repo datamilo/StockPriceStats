@@ -83,17 +83,29 @@ def load_results_for_period(period_name):
         return None
 
 def calculate_rolling_low(stock_data, period_days):
-    """Calculate rolling low for given period using optimized pandas rolling"""
+    """Calculate rolling low using calendar days, not trading days"""
     stock_data = stock_data.sort_values('Date').reset_index(drop=True)
 
-    # Use pandas rolling for much better performance than manual loops
-    # Add timeout protection by calculating in chunks if needed
-    try:
-        stock_data['rolling_low'] = stock_data['Low'].rolling(window=period_days, min_periods=1).min()
-    except Exception as e:
-        st.warning(f"⚠️ Warning calculating rolling low: {str(e)[:100]}")
-        stock_data['rolling_low'] = np.nan
+    # Calculate rolling low based on actual calendar days (not row count)
+    # For each date, find the minimum price in the past N calendar days
+    rolling_lows = []
 
+    for idx, row in stock_data.iterrows():
+        current_date = row['Date']
+        lookback_date = current_date - pd.Timedelta(days=period_days)
+
+        # Get all data within the period
+        window_data = stock_data[
+            (stock_data['Date'] >= lookback_date) &
+            (stock_data['Date'] <= current_date)
+        ]
+
+        if len(window_data) > 0:
+            rolling_lows.append(window_data['Low'].min())
+        else:
+            rolling_lows.append(None)
+
+    stock_data['rolling_low'] = rolling_lows
     return stock_data
 
 def main():
