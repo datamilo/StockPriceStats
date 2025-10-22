@@ -231,21 +231,22 @@ def main():
         hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Rolling Low: %{y:.2f}<extra></extra>'
     ))
 
-    # Highlight where price ACTUALLY broke through the rolling low
-    # A break means: Low price for the day < Rolling low for that day
-    breaks = stock_data[stock_data['Low'] < stock_data['rolling_low']].copy()
+    # Highlight where rolling low DECREASED (new lower support found)
+    # When rolling_low decreases, it means a new lower price entered the window = support was broken
+    stock_data['rolling_low_prev'] = stock_data['rolling_low'].shift()
+    breaks = stock_data[stock_data['rolling_low'] < stock_data['rolling_low_prev']].copy()
 
     if len(breaks) > 0:
         fig.add_trace(go.Scatter(
             x=breaks['Date'],
-            y=breaks['Low'],
+            y=breaks['rolling_low'],
             mode='markers',
             name='Support Broken',
             marker=dict(color='red', size=10, symbol='circle'),
-            hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Price Broke Support at: %{y:.2f} kr<extra></extra>'
+            hovertemplate='<b>%{x|%Y-%m-%d}</b><br>New Low: %{y:.2f} kr<extra></extra>'
         ))
 
-        st.write(f"**Supports Broken:** {len(breaks)} dates where price went below rolling low")
+        st.write(f"**Supports Broken:** {len(breaks)} dates where rolling low decreased (new support level)")
 
     # Update layout
     fig.update_layout(
