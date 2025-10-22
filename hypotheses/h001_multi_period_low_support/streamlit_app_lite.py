@@ -124,23 +124,12 @@ def main():
 
     st.sidebar.write(f"**Data available:** {min_date.date()} to {max_date.date()}")
 
-    # Period selector (BEFORE date range, so we can calculate rolling low on full dataset)
+    # Period selector
     period_days = st.sidebar.radio(
         "Rolling Low Period:",
         options=[30, 90, 180, 270, 365],
         format_func=lambda x: {30: "1-Month", 90: "3-Month", 180: "6-Month", 270: "9-Month", 365: "1-Year"}[x]
     )
-
-    # Calculate rolling low on ENTIRE dataset first (before filtering by date)
-    # Cache in session state to avoid recalculation on widget changes
-    cache_key = f"rolling_low_{selected_stock}_{period_days}"
-
-    if cache_key not in st.session_state:
-        with st.spinner(f"Calculating {period_days}-day rolling low..."):
-            stock_data = calculate_rolling_low(stock_data, period_days)
-            st.session_state[cache_key] = stock_data
-    else:
-        stock_data = st.session_state[cache_key].copy()
 
     # Date range selector
     st.sidebar.write("**Date Range Filter:**")
@@ -171,11 +160,16 @@ def main():
         st.sidebar.error("Start date must be before end date")
         return
 
-    # Filter by date range AFTER calculating rolling low
+    # Filter by date range FIRST
     stock_data = stock_data[
         (stock_data['Date'] >= pd.to_datetime(start_date)) &
         (stock_data['Date'] <= pd.to_datetime(end_date))
     ].copy()
+
+    # THEN calculate rolling low on the filtered data
+    # This ensures rolling low values are accurate for the visible date range
+    with st.spinner(f"Calculating {period_days}-day rolling low..."):
+        stock_data = calculate_rolling_low(stock_data, period_days)
 
     if len(stock_data) == 0:
         st.error("No data available for selected date range")
