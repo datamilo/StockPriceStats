@@ -451,7 +451,7 @@ def main():
             st.subheader(f"All Stocks - {period_name_tp}")
             st.dataframe(
                 top_performers.reset_index(drop=True),
-                use_container_width=True,
+                width='stretch',
                 hide_index=True
             )
 
