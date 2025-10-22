@@ -291,8 +291,18 @@ def append_results(new_results, period_name):
         if col in existing.columns:
             existing[col] = pd.to_datetime(existing[col])
 
-    # Append new results
-    combined = pd.concat([existing, new_results], ignore_index=True)
+    # Ensure both DataFrames have the same columns in the same order
+    # This prevents issues with concatenation when columns have different dtypes
+    if set(new_results.columns) != set(existing.columns):
+        # Add missing columns to new_results
+        for col in existing.columns:
+            if col not in new_results.columns:
+                new_results[col] = None
+        # Reorder columns to match existing
+        new_results = new_results[existing.columns]
+
+    # Append new results with explicit dtype handling
+    combined = pd.concat([existing, new_results], ignore_index=True, sort=False)
 
     # Remove duplicates (if any) - keep the most recent
     combined = combined.drop_duplicates(
