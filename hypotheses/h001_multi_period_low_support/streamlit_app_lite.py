@@ -26,9 +26,8 @@ DATA_FILE = SCRIPT_DIR / '../../price_data_filtered.parquet'
 H001_RESULTS_DIR = SCRIPT_DIR
 
 # Page config
-st.set_page_config(page_title="H001 Support Level Analyzer", layout="wide")
-st.title("🔍 H001: Support Level Investigation Tool")
-st.write("Lightweight explorer for single-stock analysis")
+st.set_page_config(page_title="Support Level Test", layout="wide")
+st.title("Support Level Test")
 
 # Cache data loading for performance
 @st.cache_data
@@ -147,8 +146,8 @@ def main():
     st.sidebar.write("**Date Range Filter:**")
     col1, col2 = st.sidebar.columns(2)
 
-    # Default to last year
-    default_start = max(min_date.date(), max_date.date() - timedelta(days=365))
+    # Default to 2024-01-01
+    default_start = max(min_date.date(), pd.to_datetime('2024-01-01').date())
 
     with col1:
         start_date = st.date_input(
