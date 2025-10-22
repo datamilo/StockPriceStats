@@ -159,6 +159,38 @@ class StockDataFilter:
 
         return df_filtered
 
+    def remove_incomplete_days(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Remove trading days with incomplete OHLC data.
+
+        Some data sources include the most recent trading day with only the
+        close price (open, high, low are NaN) until the market closes.
+        This removes those incomplete days to ensure valid candlestick charts.
+
+        Args:
+            df: Stock price DataFrame
+
+        Returns:
+            DataFrame with only complete trading days
+        """
+        logger.info("Removing incomplete trading days...")
+
+        initial_count = len(df)
+
+        # Remove rows where any of open, high, low are NaN
+        # (close is always required)
+        df_complete = df.dropna(subset=['open', 'high', 'low']).copy()
+
+        removed_count = initial_count - len(df_complete)
+
+        if removed_count > 0:
+            logger.info(f"✓ Removed {removed_count:,} rows with incomplete OHLC data")
+            logger.info(f"  - Records: {initial_count:,} → {len(df_complete):,}")
+        else:
+            logger.info(f"✓ No incomplete trading days found")
+
+        return df_complete
+
     def save_filtered_data(self, df: pd.DataFrame,
                           parquet_output: str = 'price_data_filtered.parquet',
                           csv_output: str = 'price_data_filtered.csv'):
@@ -200,17 +232,20 @@ class StockDataFilter:
             # Filter to relevant stocks
             df_filtered = self.filter_data(df_all, stocks_with_options)
 
+            # Remove incomplete trading days (recent days with only close price)
+            df_complete = self.remove_incomplete_days(df_filtered)
+
             # Save filtered data
-            self.save_filtered_data(df_filtered)
+            self.save_filtered_data(df_complete)
 
             logger.info("")
             logger.info("="*80)
             logger.info("✓ FILTERING COMPLETE!")
             logger.info("="*80)
             logger.info(f"Filtered dataset contains:")
-            logger.info(f"  - {len(df_filtered):,} records")
-            logger.info(f"  - {df_filtered['name'].nunique()} unique stocks")
-            logger.info(f"  - Date range: {df_filtered['date'].min()} to {df_filtered['date'].max()}")
+            logger.info(f"  - {len(df_complete):,} records (complete trading days only)")
+            logger.info(f"  - {df_complete['name'].nunique()} unique stocks")
+            logger.info(f"  - Date range: {df_complete['date'].min()} to {df_complete['date'].max()}")
             logger.info("")
             logger.info("Output files:")
             logger.info(f"  - price_data_filtered.parquet")
