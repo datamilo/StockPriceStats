@@ -231,8 +231,12 @@ def main():
         hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Rolling Low: %{y:.2f}<extra></extra>'
     ))
 
-    # Add support level markers if we have results
-    if results is not None and len(results) > 0:
+    # Add support level markers if we have results AND viewing full dataset
+    # Only show markers when no date filter is applied (viewing full history)
+    # This ensures rolling low values match the H001 analysis
+    is_full_dataset = (start_date == min_date.date() and end_date == max_date.date())
+
+    if results is not None and len(results) > 0 and is_full_dataset:
         # Filter results for 0 wait days (immediate support identification)
         immediate_supports = results[results['wait_days'] == 0].copy()
 
@@ -288,6 +292,9 @@ def main():
                     ))
 
                     st.write(f"**Supports Broken:** {len(broken_supports)}")
+    elif not is_full_dataset:
+        # Show message if date filter is applied
+        st.info("ℹ️ Support markers are only shown when viewing the full dataset (no date filter)")
 
     # Update layout
     fig.update_layout(
