@@ -221,8 +221,8 @@ def analyze_period_incremental(df_all, period_days, period_name, min_analyze_dat
     Analyze NEW support levels for a single period using multiprocessing.
     """
     print(f"\n{'='*80}")
-    print(f"ANALYZING NEW DATA: {period_name} LOW ({period_days} days)")
-    print(f"Processing dates AFTER: {min_analyze_date.date()}")
+    print(f"ANALYZING DATA: {period_name} LOW ({period_days} days)")
+    print(f"Processing dates FROM: {min_analyze_date.date()} onwards")
     print(f"{'='*80}")
 
     stocks = df_all['Stock'].unique()
@@ -337,9 +337,11 @@ def main():
 
     # Determine the earliest last date (most conservative)
     min_last_date = min([d for d in last_dates.values() if d is not None])
-    min_analyze_date = min_last_date
+    # Subtract 1 day to reprocess the last analyzed date (in case it was updated with new data)
+    # This handles intraday updates where the same date has more recent market data
+    min_analyze_date = min_last_date - pd.Timedelta(days=1)
 
-    print(f"\nWill analyze dates AFTER: {min_analyze_date.date()}")
+    print(f"\nWill reprocess from: {min_analyze_date.date()} (including last analyzed date: {min_last_date.date()})")
 
     # Load data
     print(f"\n{'='*80}")
