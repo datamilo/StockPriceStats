@@ -263,7 +263,7 @@ def main():
         hovermode='x unified'
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
     # Show data table
     st.subheader("Price Data Table")
@@ -274,7 +274,7 @@ def main():
 
     st.dataframe(
         table_data.rename(columns={'rolling_low': f'{period_name} Rolling Low'}),
-        use_container_width=True,
+        width='stretch',
         hide_index=True
     )
 
