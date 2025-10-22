@@ -101,6 +101,97 @@ def verify_input_file():
     return True
 
 
+def push_to_github():
+    """Commit and push updated files to GitHub"""
+    print_header("SYNCING TO GITHUB")
+
+    try:
+        # Get the latest date from the data for commit message
+        import pandas as pd
+        df = pd.read_parquet(PROJECT_ROOT / 'price_data_filtered.parquet')
+        latest_date = df['date'].max()
+
+        # Stage files
+        files_to_stage = [
+            'price_data_all.parquet',
+            'price_data_filtered.parquet',
+            'price_data_filtered.csv',
+            'hypotheses/h001_multi_period_low_support/1_month_detailed_results.parquet',
+            'hypotheses/h001_multi_period_low_support/3_month_detailed_results.parquet',
+            'hypotheses/h001_multi_period_low_support/6_month_detailed_results.parquet',
+            'hypotheses/h001_multi_period_low_support/9_month_detailed_results.parquet',
+            'hypotheses/h001_multi_period_low_support/1_year_detailed_results.parquet',
+        ]
+
+        print(f"Staging files for commit...")
+        for file in files_to_stage:
+            file_path = PROJECT_ROOT / file
+            if file_path.exists():
+                subprocess.run(
+                    ['git', 'add', str(file_path)],
+                    cwd=str(PROJECT_ROOT),
+                    check=True,
+                    capture_output=True
+                )
+                print(f"  ✓ Staged {file}")
+
+        # Check if there are changes to commit
+        result = subprocess.run(
+            ['git', 'status', '--porcelain'],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        if not result.stdout.strip():
+            print("\n  No changes to commit (data already up-to-date)")
+            return True
+
+        # Create commit message
+        commit_msg = f"""Update: Latest price data through {latest_date} with complete OHLC values
+
+Updated datasets include candlestick data for Streamlit app:
+- price_data_all.parquet: Latest records through {latest_date}
+- price_data_filtered.parquet: 70 Nordic stocks updated
+- H001 analysis results: All rolling low periods current
+- price_data_filtered.csv: CSV export of filtered data
+
+🤖 Generated with Claude Code
+
+Co-Authored-By: Claude <noreply@anthropic.com>"""
+
+        # Commit
+        print(f"\nCommitting changes...")
+        subprocess.run(
+            ['git', 'commit', '-m', commit_msg],
+            cwd=str(PROJECT_ROOT),
+            check=True,
+            capture_output=True
+        )
+        print(f"  ✓ Commit created")
+
+        # Push
+        print(f"Pushing to GitHub...")
+        subprocess.run(
+            ['git', 'push', 'origin', 'main'],
+            cwd=str(PROJECT_ROOT),
+            check=True,
+            capture_output=True
+        )
+        print(f"  ✓ Pushed to origin/main")
+
+        return True
+
+    except subprocess.CalledProcessError as e:
+        print(f"\n✗ Git operation failed")
+        print(f"Error: {e.stderr.decode() if e.stderr else 'Unknown error'}")
+        return False
+    except Exception as e:
+        print(f"\n✗ Unexpected error during GitHub sync: {e}")
+        return False
+
+
 def main():
     """Main update workflow"""
     print("\n")
@@ -134,12 +225,24 @@ def main():
         print("\n✗ Incremental analysis failed.")
         return 1
 
+    # Step 3: Push to GitHub
+    if not push_to_github():
+        print("\n✗ GitHub sync failed.")
+        print("⚠️  Data has been updated locally but NOT pushed to GitHub.")
+        print("Run the following commands manually:")
+        print("  git add .")
+        print("  git commit -m 'Update: Latest price data'")
+        print("  git push origin main")
+        return 1
+
     # Success!
-    print_header("✓ ALL UPDATES COMPLETE!")
+    print_header("✓ ALL UPDATES COMPLETE & SYNCED TO GITHUB!")
 
     print("""
-The following files have been updated:
+The following files have been updated and pushed to GitHub:
+  ✓ price_data_all.parquet  - Latest price data
   ✓ price_data_filtered.parquet  - Filtered stock price data (70 stocks)
+  ✓ price_data_filtered.csv  - CSV export of filtered data
   ✓ 1_month_detailed_results.parquet  - H001 analysis results
   ✓ 3_month_detailed_results.parquet  - H001 analysis results
   ✓ 6_month_detailed_results.parquet  - H001 analysis results
@@ -147,16 +250,12 @@ The following files have been updated:
   ✓ 1_year_detailed_results.parquet  - H001 analysis results
 
 The Streamlit app will automatically use the updated data on next refresh.
-
-Next steps:
-  1. Commit these changes to git
-  2. Push to GitHub
-  3. Streamlit Cloud will redeploy automatically
+GitHub and Streamlit Cloud will auto-deploy the changes.
 
 To update again in the future:
   1. Place a new price_data_all.parquet in the main folder
   2. Run: python update_analysis_data.py
-  3. That's it!
+  3. That's it! Everything else is automated.
 """)
 
     return 0
