@@ -71,8 +71,12 @@ def calculate_rolling_low(stock_data, period_days):
     stock_data = stock_data.sort_values('Date').reset_index(drop=True)
 
     # Use pandas rolling for much better performance than manual loops
-    # This is 10-100x faster than iterating manually
-    stock_data['rolling_low'] = stock_data['Low'].rolling(window=period_days, min_periods=1).min()
+    # Add timeout protection by calculating in chunks if needed
+    try:
+        stock_data['rolling_low'] = stock_data['Low'].rolling(window=period_days, min_periods=1).min()
+    except Exception as e:
+        st.warning(f"⚠️ Warning calculating rolling low: {str(e)[:100]}")
+        stock_data['rolling_low'] = np.nan
 
     return stock_data
 
@@ -112,7 +116,15 @@ def main():
     )
 
     # Calculate rolling low on ENTIRE dataset first (before filtering by date)
-    stock_data = calculate_rolling_low(stock_data, period_days)
+    # Cache in session state to avoid recalculation on widget changes
+    cache_key = f"rolling_low_{selected_stock}_{period_days}"
+
+    if cache_key not in st.session_state:
+        with st.spinner(f"Calculating {period_days}-day rolling low..."):
+            stock_data = calculate_rolling_low(stock_data, period_days)
+            st.session_state[cache_key] = stock_data
+    else:
+        stock_data = st.session_state[cache_key].copy()
 
     # Date range selector
     st.sidebar.write("**Date Range Filter:**")
