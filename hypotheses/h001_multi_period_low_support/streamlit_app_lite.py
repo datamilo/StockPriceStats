@@ -244,19 +244,6 @@ def main():
         immediate_supports = results[results['wait_days'] == 0].copy()
 
         if len(immediate_supports) > 0:
-            # Get the latest date in the filtered dataset
-            latest_date = stock_data['Date'].max()
-
-            # Filter out supports that are too close to the end of the dataset
-            # We need at least 225 days of future data to properly test (180 wait + 45 expiry)
-            # Supports without enough future data will show false failures
-            min_support_date = latest_date - pd.Timedelta(days=225)
-
-            immediate_supports = immediate_supports[
-                immediate_supports['support_date'] <= min_support_date
-            ].copy()
-
-            if len(immediate_supports) > 0:
                 # Group by support_date and get unique levels
                 unique_supports = immediate_supports[['support_date', 'support_level']].drop_duplicates()
                 unique_supports = unique_supports.sort_values('support_date')
@@ -274,14 +261,20 @@ def main():
                         support_success[key].append(success)
 
                 # Determine color: green if any test passed, red if all failed
+                # Skip supports with no valid test data (all None)
                 successful_supports = []
                 failed_supports = []
 
                 for date, level in support_success:
-                    if any(support_success[(date, level)]):
-                        successful_supports.append((date, level))
-                    else:
-                        failed_supports.append((date, level))
+                    test_results = support_success[(date, level)]
+
+                    # Only categorize if we have at least one valid test result
+                    if len(test_results) > 0:
+                        if any(test_results):
+                            successful_supports.append((date, level))
+                        else:
+                            failed_supports.append((date, level))
+                    # else: skip supports with no valid test data
 
                 # Add successful supports (green)
                 if successful_supports:
