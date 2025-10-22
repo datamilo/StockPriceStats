@@ -9,7 +9,6 @@ Usage:
 
 Output:
     - price_data_filtered.parquet: Filtered price data (parquet format)
-    - price_data_filtered.csv: Filtered price data (CSV format, pipe-delimited)
 """
 
 import pandas as pd
@@ -192,15 +191,13 @@ class StockDataFilter:
         return df_complete
 
     def save_filtered_data(self, df: pd.DataFrame,
-                          parquet_output: str = 'price_data_filtered.parquet',
-                          csv_output: str = 'price_data_filtered.csv'):
+                          parquet_output: str = 'price_data_filtered.parquet'):
         """
-        Save filtered data to both parquet and CSV formats.
+        Save filtered data to parquet format.
 
         Args:
             df: Filtered DataFrame to save
             parquet_output: Output parquet filename
-            csv_output: Output CSV filename
         """
         logger.info("Saving filtered data...")
 
@@ -209,12 +206,6 @@ class StockDataFilter:
         df.to_parquet(parquet_path, index=False)
         parquet_size = parquet_path.stat().st_size / 1024 / 1024  # MB
         logger.info(f"✓ Saved parquet: {parquet_path.name} ({parquet_size:.2f} MB)")
-
-        # Save as CSV (pipe-delimited)
-        csv_path = self.project_root / csv_output
-        df.to_csv(csv_path, sep='|', index=False)
-        csv_size = csv_path.stat().st_size / 1024 / 1024  # MB
-        logger.info(f"✓ Saved CSV: {csv_path.name} ({csv_size:.2f} MB)")
 
     def run(self):
         """Execute the complete filtering process"""
@@ -247,9 +238,8 @@ class StockDataFilter:
             logger.info(f"  - {df_complete['name'].nunique()} unique stocks")
             logger.info(f"  - Date range: {df_complete['date'].min()} to {df_complete['date'].max()}")
             logger.info("")
-            logger.info("Output files:")
+            logger.info("Output file:")
             logger.info(f"  - price_data_filtered.parquet")
-            logger.info(f"  - price_data_filtered.csv")
             logger.info("="*80)
 
             return True

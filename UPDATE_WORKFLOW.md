@@ -70,7 +70,6 @@ python update_analysis_data.py
 ```
 price_data_all.parquet              ← Your NEW/UPDATED price data (put here)
 price_data_filtered.parquet         ← Auto-updated by the script (70 stocks)
-price_data_filtered.csv             ← Auto-updated by the script
 update_analysis_data.py             ← THE SCRIPT TO RUN (this one!)
 filter_relevant_stocks.py           ← Called automatically
 example_analysis.py                 ← For reference
@@ -143,14 +142,9 @@ Will analyze dates AFTER: 2025-10-17
 **Step 4:** Verify results
 - Check that all parquet files were updated
 - Run the Streamlit app locally: `streamlit run hypotheses/h001_multi_period_low_support/streamlit_app_lite.py`
-- If deployed on Streamlit Cloud, it will auto-redeploy within seconds
+- If deployed on Streamlit Cloud, it will auto-redeploy within seconds (data was automatically pushed to GitHub)
 
-**Step 5:** (Optional) Commit and push changes
-```bash
-git add .
-git commit -m "Update: Added new price data through 2025-10-22"
-git push origin main
-```
+**Note:** The script automatically commits and pushes changes to GitHub, so no manual git operations are needed!
 
 ---
 
@@ -238,12 +232,14 @@ streamlit run streamlit_app_lite.py  # View in browser
 4. New data available globally within minutes
 
 ### Git Workflow
+The `update_analysis_data.py` script now handles git operations automatically:
 ```bash
-# After running update_analysis_data.py
-git add .
-git commit -m "Update: Added new price data"
-git push origin main
-# Streamlit Cloud redeploys automatically!
+# Just run the script - it does everything!
+python update_analysis_data.py
+# ✓ Updates all data
+# ✓ Automatically commits with descriptive message
+# ✓ Automatically pushes to GitHub
+# ✓ Streamlit Cloud redeploys automatically!
 ```
 
 ---

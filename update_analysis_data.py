@@ -115,7 +115,6 @@ def push_to_github():
         files_to_stage = [
             'price_data_all.parquet',
             'price_data_filtered.parquet',
-            'price_data_filtered.csv',
             'hypotheses/h001_multi_period_low_support/1_month_detailed_results.parquet',
             'hypotheses/h001_multi_period_low_support/3_month_detailed_results.parquet',
             'hypotheses/h001_multi_period_low_support/6_month_detailed_results.parquet',
@@ -155,7 +154,6 @@ Updated datasets include candlestick data for Streamlit app:
 - price_data_all.parquet: Latest records through {latest_date}
 - price_data_filtered.parquet: 70 Nordic stocks updated
 - H001 analysis results: All rolling low periods current
-- price_data_filtered.csv: CSV export of filtered data
 
 🤖 Generated with Claude Code
 
@@ -242,7 +240,6 @@ def main():
 The following files have been updated and pushed to GitHub:
   ✓ price_data_all.parquet  - Latest price data
   ✓ price_data_filtered.parquet  - Filtered stock price data (70 stocks)
-  ✓ price_data_filtered.csv  - CSV export of filtered data
   ✓ 1_month_detailed_results.parquet  - H001 analysis results
   ✓ 3_month_detailed_results.parquet  - H001 analysis results
   ✓ 6_month_detailed_results.parquet  - H001 analysis results
