@@ -244,58 +244,71 @@ def main():
         immediate_supports = results[results['wait_days'] == 0].copy()
 
         if len(immediate_supports) > 0:
-            # Group by support_date and get unique levels
-            unique_supports = immediate_supports[['support_date', 'support_level']].drop_duplicates()
-            unique_supports = unique_supports.sort_values('support_date')
+            # Get the latest date in the filtered dataset
+            latest_date = stock_data['Date'].max()
 
-            # For each support, determine if ANY test was successful (optimistic)
-            support_success = {}
-            for _, row in immediate_supports.iterrows():
-                date = row['support_date']
-                level = row['support_level']
-                success = row['success']
-                key = (date, level)
-                if key not in support_success:
-                    support_success[key] = []
-                if pd.notna(success):
-                    support_success[key].append(success)
+            # Filter out supports that are too close to the end of the dataset
+            # We need at least 225 days of future data to properly test (180 wait + 45 expiry)
+            # Supports without enough future data will show false failures
+            min_support_date = latest_date - pd.Timedelta(days=225)
 
-            # Determine color: green if any test passed, red if all failed
-            successful_supports = []
-            failed_supports = []
+            immediate_supports = immediate_supports[
+                immediate_supports['support_date'] <= min_support_date
+            ].copy()
 
-            for date, level in support_success:
-                if any(support_success[(date, level)]):
-                    successful_supports.append((date, level))
-                else:
-                    failed_supports.append((date, level))
+            if len(immediate_supports) > 0:
+                # Group by support_date and get unique levels
+                unique_supports = immediate_supports[['support_date', 'support_level']].drop_duplicates()
+                unique_supports = unique_supports.sort_values('support_date')
 
-            # Add successful supports (green)
-            if successful_supports:
-                supp_dates, supp_levels = zip(*successful_supports)
-                fig.add_trace(go.Scatter(
-                    x=supp_dates,
-                    y=supp_levels,
-                    mode='markers',
-                    name='Support (Success)',
-                    marker=dict(color='green', size=8, symbol='circle'),
-                    hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Support: %{y:.2f} ✓<extra></extra>'
-                ))
+                # For each support, determine if ANY test was successful (optimistic)
+                support_success = {}
+                for _, row in immediate_supports.iterrows():
+                    date = row['support_date']
+                    level = row['support_level']
+                    success = row['success']
+                    key = (date, level)
+                    if key not in support_success:
+                        support_success[key] = []
+                    if pd.notna(success):
+                        support_success[key].append(success)
 
-            # Add failed supports (red)
-            if failed_supports:
-                supp_dates, supp_levels = zip(*failed_supports)
-                fig.add_trace(go.Scatter(
-                    x=supp_dates,
-                    y=supp_levels,
-                    mode='markers',
-                    name='Support (Failed)',
-                    marker=dict(color='red', size=8, symbol='circle'),
-                    hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Support: %{y:.2f} ✗<extra></extra>'
-                ))
+                # Determine color: green if any test passed, red if all failed
+                successful_supports = []
+                failed_supports = []
 
-            # Show summary
-            st.write(f"**Support Levels Found (wait=0):** {len(successful_supports)} successful, {len(failed_supports)} failed")
+                for date, level in support_success:
+                    if any(support_success[(date, level)]):
+                        successful_supports.append((date, level))
+                    else:
+                        failed_supports.append((date, level))
+
+                # Add successful supports (green)
+                if successful_supports:
+                    supp_dates, supp_levels = zip(*successful_supports)
+                    fig.add_trace(go.Scatter(
+                        x=supp_dates,
+                        y=supp_levels,
+                        mode='markers',
+                        name='Support (Success)',
+                        marker=dict(color='green', size=8, symbol='circle'),
+                        hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Support: %{y:.2f} ✓<extra></extra>'
+                    ))
+
+                # Add failed supports (red)
+                if failed_supports:
+                    supp_dates, supp_levels = zip(*failed_supports)
+                    fig.add_trace(go.Scatter(
+                        x=supp_dates,
+                        y=supp_levels,
+                        mode='markers',
+                        name='Support (Failed)',
+                        marker=dict(color='red', size=8, symbol='circle'),
+                        hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Support: %{y:.2f} ✗<extra></extra>'
+                    ))
+
+                # Show summary
+                st.write(f"**Support Levels Found (wait=0):** {len(successful_supports)} successful, {len(failed_supports)} failed")
 
     # Update layout
     fig.update_layout(
