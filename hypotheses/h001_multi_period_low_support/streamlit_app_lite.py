@@ -253,48 +253,41 @@ def main():
                     if pd.notna(success):
                         support_success[key].append(success)
 
-                # Determine color: green if any test passed, red if all failed
+                # Determine which supports were broken (failed)
                 # Skip supports with no valid test data (all None)
-                successful_supports = []
-                failed_supports = []
+                broken_supports = []
 
                 for date, level in support_success:
                     test_results = support_success[(date, level)]
 
-                    # Only categorize if we have at least one valid test result
-                    if len(test_results) > 0:
-                        if any(test_results):
-                            successful_supports.append((date, level))
+                    # Only show if we have valid test data AND it was broken
+                    if len(test_results) > 0 and not any(test_results):
+                        broken_supports.append((date, level))
+
+                # Add broken supports (red) - positioned at the actual low price for that day
+                if broken_supports:
+                    broken_dates = []
+                    broken_prices = []
+
+                    for date, level in broken_supports:
+                        broken_dates.append(date)
+                        # Get the actual low price for this date from the stock data
+                        day_data = stock_data[stock_data['Date'] == date]
+                        if len(day_data) > 0:
+                            broken_prices.append(day_data['Low'].iloc[0])
                         else:
-                            failed_supports.append((date, level))
-                    # else: skip supports with no valid test data
+                            broken_prices.append(level)
 
-                # Add successful supports (green)
-                if successful_supports:
-                    supp_dates, supp_levels = zip(*successful_supports)
                     fig.add_trace(go.Scatter(
-                        x=supp_dates,
-                        y=supp_levels,
+                        x=broken_dates,
+                        y=broken_prices,
                         mode='markers',
-                        name='Support (Success)',
-                        marker=dict(color='green', size=8, symbol='circle'),
-                        hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Support: %{y:.2f} ✓<extra></extra>'
-                    ))
-
-                # Add failed supports (red)
-                if failed_supports:
-                    supp_dates, supp_levels = zip(*failed_supports)
-                    fig.add_trace(go.Scatter(
-                        x=supp_dates,
-                        y=supp_levels,
-                        mode='markers',
-                        name='Support (Failed)',
+                        name='Support Broken',
                         marker=dict(color='red', size=8, symbol='circle'),
-                        hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Support: %{y:.2f} ✗<extra></extra>'
+                        hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Support Broken at: %{y:.2f}<extra></extra>'
                     ))
 
-                # Show summary
-                st.write(f"**Support Levels Found (wait=0):** {len(successful_supports)} successful, {len(failed_supports)} failed")
+                    st.write(f"**Supports Broken:** {len(broken_supports)}")
 
     # Update layout
     fig.update_layout(
