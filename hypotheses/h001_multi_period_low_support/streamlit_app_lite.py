@@ -131,6 +131,11 @@ def main():
         format_func=lambda x: {30: "1-Month", 90: "3-Month", 180: "6-Month", 270: "9-Month", 365: "1-Year"}[x]
     )
 
+    # Calculate rolling low on FULL dataset FIRST
+    # This is the TRUE rolling low for each date - it never changes
+    with st.spinner(f"Calculating {period_days}-day rolling low..."):
+        stock_data_with_rolling_low = calculate_rolling_low(stock_data.copy(), period_days)
+
     # Date range selector
     st.sidebar.write("**Date Range Filter:**")
     col1, col2 = st.sidebar.columns(2)
@@ -160,16 +165,11 @@ def main():
         st.sidebar.error("Start date must be before end date")
         return
 
-    # Filter by date range FIRST
-    stock_data = stock_data[
-        (stock_data['Date'] >= pd.to_datetime(start_date)) &
-        (stock_data['Date'] <= pd.to_datetime(end_date))
+    # Filter by date range for DISPLAY
+    stock_data = stock_data_with_rolling_low[
+        (stock_data_with_rolling_low['Date'] >= pd.to_datetime(start_date)) &
+        (stock_data_with_rolling_low['Date'] <= pd.to_datetime(end_date))
     ].copy()
-
-    # THEN calculate rolling low on the filtered data
-    # This ensures rolling low values are accurate for the visible date range
-    with st.spinner(f"Calculating {period_days}-day rolling low..."):
-        stock_data = calculate_rolling_low(stock_data, period_days)
 
     if len(stock_data) == 0:
         st.error("No data available for selected date range")
@@ -231,12 +231,9 @@ def main():
         hovertemplate='<b>%{x|%Y-%m-%d}</b><br>Rolling Low: %{y:.2f}<extra></extra>'
     ))
 
-    # Add support level markers if we have results AND viewing full dataset
-    # Only show markers when no date filter is applied (viewing full history)
-    # This ensures rolling low values match the H001 analysis
-    is_full_dataset = (start_date == min_date.date() and end_date == max_date.date())
-
-    if results is not None and len(results) > 0 and is_full_dataset:
+    # Add support level markers - show where supports were broken
+    # These are based on the true rolling low (calculated from full dataset)
+    if results is not None and len(results) > 0:
         # Filter results for 0 wait days (immediate support identification)
         immediate_supports = results[results['wait_days'] == 0].copy()
 
@@ -292,9 +289,6 @@ def main():
                     ))
 
                     st.write(f"**Supports Broken:** {len(broken_supports)}")
-    elif not is_full_dataset:
-        # Show message if date filter is applied
-        st.info("ℹ️ Support markers are only shown when viewing the full dataset (no date filter)")
 
     # Update layout
     fig.update_layout(
