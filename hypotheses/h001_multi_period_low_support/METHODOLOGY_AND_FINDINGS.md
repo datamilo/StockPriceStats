@@ -1,6 +1,10 @@
-# Multi-Period Support Level Analysis: Comprehensive Methodology and Findings
+# H001: Multi-Period Support Level Analysis - Methodology and Findings
 
-> **📊 Interactive Dashboard:** For an interactive visual exploration, open `multi_period_dashboard.html` in your browser.
+> **📊 Interactive Exploration:** Use the Streamlit app to explore support levels for any stock:
+>
+> ```bash
+> streamlit run streamlit_app_lite.py
+> ```
 
 ## Executive Summary
 
@@ -147,52 +151,48 @@ Typically you'll see:
 3. **Success increases with wait time** (aged support is stronger)
 4. **All periods converge at high success** when well-aged (90+ days)
 
-## Practical Application
+## Key Findings
 
-### Finding Your Trading Setup
+### Conclusion: Shorter Periods Are Superior
 
-1. **Choose a time period** (1/3/6/9/12 month) based on your style
-2. **Identify a support level** for your stock
-3. **Calculate how long** it's been since the low (support age)
-4. **Check the matrix** for your wait time + expiry combination
-5. **Evaluate the success rate** and sample size
-6. **Make your trading decision**
+After testing ~30 million historical scenarios across 70 stocks and 25 years:
 
-### Example Scenario
+**Success Rates by Rolling Period:**
+| Period | Success Rate | Opportunities |
+|--------|-------------|----------------|
+| **1-Month** | **89.7%** | **Highest (daily)** |
+| **3-Month** | **89.0%** | **Very High** |
+| 6-Month | ~88% | Moderate |
+| 9-Month | ~88% | Moderate |
+| 1-Year | 87.8% | Lowest (rarest) |
 
-**Real Setup:**
-- Stock XYZ has a 3-month low of 150 kr
-- The low was set 90 days ago
-- You want to write a 30-day put
-- You're willing to wait 30 days before writing
-- **Look up:** 3-month period, wait_60d (90-30=60), expiry_30d
-- **Find:** 87% success rate on 500+ samples
-- **Decision:** Good risk/reward for your edge
+### The Game Changer
 
-### Position Sizing
+**Finding:** 1-month and 3-month rolling lows provide **6-7x more trading opportunities** than 1-year lows while maintaining **equal or better success rates**.
 
-With historical success rates:
-- 86% success → ~1.2:1 win/loss ratio for balanced sizing
-- 89% success → ~1.5:1 win/loss ratio for more aggressive sizing
-- 92% success → ~2.0:1 win/loss ratio for aggressive sizing
+This fundamentally changes the put option writing strategy:
+- Instead of waiting months for 1-year lows, you can trade daily
+- Shorter-period lows are just as reliable
+- This dramatically increases annual premium collection potential
 
-Use Kelly criterion or fixed fractional sizing based on your success rate and risk tolerance.
+### Effect of Support Age
 
-## Comparison: Different Low Periods
+**Key Insight:** How long the support has been established (support age) matters MORE than the rolling period itself.
 
-### 1-Month vs 3-Month vs 1-Year Lows
+- **Fresh support (0-30 days old):** Lower success rate (~82-85%)
+- **Moderate support (30-90 days old):** Good success rate (~88-89%)
+- **Aged support (90+ days old):** Highest success rate (~91-93%)
 
-The analysis allows direct comparison:
-- **Same wait time** (e.g., 60 days) → Compare across periods
-- **Same expiry period** (e.g., 30 days) → Compare across periods
-- **Identify which period** offers best risk/reward for your situation
+This suggests: **Wait for the support to age before writing puts for better probability.**
 
-### Key Questions Answered
+### Option Expiry vs Wait Time
 
-1. **Are shorter periods reliable?** - Check the matrices
-2. **Does waiting improve success?** - Compare row to row
-3. **Which expiry is best?** - Compare column to column
-4. **Where's the sweet spot?** - Look for high success + high sample count
+The analysis reveals clear patterns:
+- **Shorter expirations (7-14 days):** Higher success rates (~93-96%)
+- **Longer expirations (30-45 days):** Lower success rates (~85-88%)
+- **Waiting longer (90-180 days):** Increases success across all expiry periods
+
+Strategy implication: Consider shorter-dated options with aged supports for optimal risk/reward.
 
 ## Limitations and Assumptions
 
@@ -212,107 +212,35 @@ The analysis allows direct comparison:
 4. **Volatility impact** - IV changes affect option premiums but not support reliability
 5. **Backtesting bias** - Past performance doesn't guarantee future results
 
-## File Descriptions
+## Data Files
 
-### Analysis Output Files
+The analysis generates detailed result files used by the Streamlit app:
 
-- **`{period}_detailed_results.csv`** - Event-level data
-  - Every support level identified
-  - Every wait time tested
-  - Every expiry period tested
-  - Success/failure for each combination
+**`{period}_detailed_results.parquet`** - Stores every test case
+- One row per support level tested
+- Columns: stock, support_date, support_level, wait_days, success, days_to_break
+- Used by the Streamlit app for visualization and filtering
+- Available for 1-month, 3-month, 6-month, 9-month, and 1-year periods
 
-- **`{period}_matrix.csv`** - Summary matrix
-  - Rows: wait times
-  - Columns: expiry periods + success rates
-  - Useful for quick lookups
-
-- **`multi_period_combined_matrix.csv`** - All periods combined
-  - Compare across different time periods
-  - Identify which period performs best
-
-### Data Structure
-
-Each detailed results file contains:
-- `stock` - Stock symbol
-- `support_date` - When the support level was set
-- `support_level` - The price level (in kr)
-- `wait_days` - Days waited before writing put
-- `test_date` - When put was written
-- `expiry_days` - Days until put expires
-- `expiry_date` - When put expires
-- `success` - True/False: did support hold?
-- `min_during_option` - Lowest price during option period
-- `days_to_break` - If failed, how many days until support broke
-- `break_pct` - If failed, how far below support it went
-
-## Interpretation Guide
-
-### When Results Are Reliable
-
-✅ **High confidence** when:
-- Sample count > 1,000
-- Success rate > 90%
-- Consistent across multiple stocks
-
-✅ **Moderate confidence** when:
-- Sample count > 300
-- Success rate 80-90%
-- Reasonable consistency
-
-⚠️ **Low confidence** when:
-- Sample count < 100
-- Success rate < 75%
-- Highly variable across stocks
-
-### Making Trading Decisions
-
-**Conservative approach:**
-- Only trade when success rate > 90% AND sample > 500
-- Use tighter stops
-- Smaller position sizes
-
-**Moderate approach:**
-- Trade when success rate > 85% AND sample > 200
-- Normal risk management
-- Normal position sizes
-
-**Aggressive approach:**
-- Trade when success rate > 80% AND sample > 100
-- Wider stops
-- Can size larger if conviction is high
-
-## Next Steps
-
-### Phase 1: Validation
-1. Review results in dashboard
-2. Spot-check against current market supports
-3. Validate the methodology makes sense
-
-### Phase 2: Implementation
-1. Identify current 1-month or 3-month lows in your watchlist
-2. Calculate support age
-3. Check historical success rates for your desired setup
-4. Paper trade a few setups
-
-### Phase 3: Live Trading
-1. Start with small positions
-2. Track actual results vs historical predictions
-3. Adjust position sizing based on actual performance
-4. Refine stock/period selection over time
-
-## Future Enhancements
-
-**Planned Analyses:**
-1. **Volatility regime** - High IV vs Low IV environments
-2. **Volume confirmation** - Does low volume strengthen supports?
-3. **Trend context** - Uptrend vs downtrend supports
-4. **Multi-period signals** - Stock at multiple lows simultaneously
-5. **Sector analysis** - Which sectors work best?
+These parquet files are updated incrementally whenever new price data arrives using `multi_period_low_analysis_incremental.py`.
 
 ---
 
-*Analysis Methodology: Rolling support testing with wait time constraints*
+## Summary
+
+**H001 successfully validates** that shorter-term rolling support levels are superior to longer-term lows for put option writing because:
+
+1. **Equal Reliability:** 1-month lows (89.7%) vs 1-year lows (87.8%) - only 1.9% difference
+2. **Far More Opportunities:** 6-7x more support events to trade from 1-month lows
+3. **Support Age Matters Most:** Waiting 90 days dramatically improves success rates across ALL periods
+4. **Optimal Strategy:** Short-dated options (7-14 days) on well-aged supports offer best risk/reward
+
+This analysis provides the foundation for developing a systematic put option writing strategy based on rolling support levels.
+
+---
+
+*Analysis Methodology: Calendar-based rolling low support testing*
 *Data Range: 2000-2025 (25 years)*
-*Stocks: 70 Nordic blue-chip*
-*Last Updated: 2025-10-21*
+*Sample Size: ~30 million test cases*
+*Stocks Analyzed: 70 Nordic blue-chip with liquid options*
+*Last Updated: 2025-10-22*

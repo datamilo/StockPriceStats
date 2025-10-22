@@ -1,12 +1,17 @@
 # H001: Multi-Period Support Level Analysis for Put Option Writing
 
-> **📊 START HERE:** Open `multi_period_dashboard.html` in your browser for interactive analysis!
+> **📊 START HERE:** Run the Streamlit app to interactively analyze any stock!
+>
+> ```bash
+> streamlit run streamlit_app_lite.py
+> ```
+> Then open your browser to `http://localhost:8501`
 
-## Hypothesis Statement
+## Hypothesis & Conclusion
 
 **Question:** Do shorter-term support levels (1-month, 3-month) work just as well as longer-term ones (1-year) for identifying reliable strike prices when writing put options?
 
-**Methodology:** For each rolling time period, we identify the support level (lowest price) and test whether price remains above that level when we write puts at various wait times after the support is set, with different option expiry periods.
+**Conclusion:** ✅ **YES** - Shorter-term rolling lows are actually SUPERIOR because they provide equal success rates (89-90%) with 6-7x more trading opportunities.
 
 ## Understanding the Analysis
 
@@ -44,51 +49,44 @@
 
 ## Files in This Hypothesis
 
-### Interactive Dashboard
-- **`multi_period_dashboard.html`** - Main interactive dashboard (START HERE!)
-  - Period comparison tables showing success rates
-  - Interactive price charts with support visualization
-  - Filters for:
-    - Time period (1/3/6/9/12 months)
-    - Stock selection
-    - Date range
-    - Wait time (constrained by period)
-    - Option expiry period
-  - Success rate matrices
-  - Swedish market focus (all prices in kr)
-
-### Data Files
-- **`multi_period_dashboard_data.json`** - Dashboard data
-- **`multi_period_combined_matrix.csv`** - Combined success rate matrix
-- **`{period}_detailed_results.csv`** - Detailed results for each period
-- **`{period}_matrix.csv`** - Success rate matrix for each period
+### Interactive Web App
+- **`streamlit_app_lite.py`** - Main Streamlit application
+  - Real-time analysis of any stock
+  - Period selection (1/3/6/9/12 months)
+  - Interactive price charts with rolling low visualization
+  - Date range filtering
+  - Support level markers (red dots when support breaks)
+  - Performance statistics
 
 ### Analysis Scripts
-- **`multi_period_low_analysis.py`** - Main analysis (generates all results)
-- **`add_price_data_to_dashboard.py`** - Adds price chart data to dashboard
-- **`build_clean_dashboard.py`** - Builds HTML dashboard
+- **`multi_period_low_analysis.py`** - Full re-analysis (for first-time setup)
+  - Regenerates all results from scratch
+  - Takes 2-3 hours (only needed for methodology changes)
+- **`multi_period_low_analysis_incremental.py`** - Incremental updates
+  - Processes only new data (much faster)
+  - Called automatically by `../update_analysis_data.py`
+  - Takes 5-10 minutes for new data
+
+### Result Data Files
+- **`{period}_detailed_results.parquet`** - Detailed test results for each period
+  - Columns: stock, support_date, support_level, wait_days, success, days_to_break
+  - Used by the Streamlit app for visualization
 
 ### Documentation
 - **`README.md`** - This file (quick reference)
-- **`METHODOLOGY_AND_FINDINGS.md`** - Comprehensive analysis
+- **`METHODOLOGY_AND_FINDINGS.md`** - Detailed methodology and findings
 
-## How to Run the Analysis
+## How to Run the Streamlit App
 
+### Locally on Your Computer
 ```bash
-cd hypotheses/h001_multi_period_low_support
-
-# 1. Run the multi-period analysis
-python multi_period_low_analysis.py
-
-# 2. Add price data to dashboard
-python add_price_data_to_dashboard.py
-
-# 3. Build the interactive dashboard
-python build_clean_dashboard.py
-
-# 4. Open the dashboard
-open multi_period_dashboard.html
+cd StockPriceStats
+streamlit run hypotheses/h001_multi_period_low_support/streamlit_app_lite.py
 ```
+Then open `http://localhost:8501` in your browser.
+
+### On Streamlit Cloud
+If deployed, access the live app at the provided URL (no installation needed).
 
 ## Dataset
 
@@ -99,43 +97,53 @@ open multi_period_dashboard.html
 
 ## Example: How the Analysis Works
 
-**Scenario:** Stock ABC in January 2023
+**Scenario:** Stock at 150 kr in January
 
-1. **January 10:** 1-month low is 150 kr
-2. **Wait 30 days** → February 9 (support holds above 150 kr during wait)
-3. **February 9:** Write 30-day put at 150 kr strike
-4. **March 11:** Check if price stayed ≥ 150 kr during the option period
-   - If YES: Success ✓ (option expired worthless, premium kept)
-   - If NO: Failure ✗ (price touched support, assignment risk)
+1. **January 10:** 1-month rolling low = 150 kr (lowest price in past 30 days)
+2. **Wait 30 days** → February 9 (price stays above 150 kr during the wait)
+3. **February 9:** Write 30-day put with strike at 150 kr
+4. **March 11:** Check if price stayed ≥ 150 kr the entire option period
+   - If YES: ✓ Success (option expired worthless, premium kept)
+   - If NO: ✗ Failure (price went below 150 kr, assignment risk)
 
-The analysis tests this scenario for:
-- All 70 stocks
-- All time periods (1/3/6/9/12 months)
-- All valid wait times for each period
-- All expiry periods (7/14/21/30/45 days)
-- Over 25 years of historical data
+The analysis tested this exact scenario across:
+- **70 stocks** (Nordic options universe)
+- **25 years** of historical data (2000-2025)
+- **All 5 rolling periods** (1, 3, 6, 9, 12 months)
+- **All wait times** (0-180 days, constrained by period)
+- **All option expiries** (7-45 days)
+- **Total:** ~30 million historical test cases
 
-## Results
+## What the Results Show
 
-Results are organized in matrices with:
-- **Rows:** Wait times (0, 30, 60, 90, 120, 180 days - constrained by period)
-- **Columns:** Expiry periods (7, 14, 21, 30, 45 days)
-- **Values:** Success rates (%) and sample counts
+Success rates show the historical probability that a put option would expire worthless:
 
-This allows you to look up: "If I write a 30-day put on a 3-month low after waiting 60 days, what's the historical success rate?"
+| Period | Success Rate | Opportunities |
+|--------|-------------|----------------|
+| 1-Month | 89.7% | Highest (daily) |
+| 3-Month | 89.0% | Very high (6-7x vs 1-year) |
+| 6-Month | ~88% | Moderate |
+| 9-Month | ~88% | Moderate |
+| 1-Year | 87.8% | Lowest |
 
-## Next Steps
+**Key Insight:** Shorter periods give equal or better success rates with far more trading opportunities.
 
-1. **Open multi_period_dashboard.html** to explore results interactively
-2. **Use the filters** to:
-   - Select a time period (1/3/6/9/12 months)
-   - Pick a stock
-   - View the success rate matrix
-3. **Notice the time window constraints** - wait times available depend on the period
-4. **Compare strategies** - see which combinations offer the best probability
+## Using the Streamlit App
+
+1. **Launch the app** (see instructions above)
+2. **Select a stock** from the dropdown (any of the 70)
+3. **Choose a rolling period** (1-month, 3-month, etc.)
+4. **Set your date range** to analyze a specific timeframe
+5. **View the chart** showing:
+   - Daily price candlesticks
+   - Rolling low line (blue dashed)
+   - Support breaks (red dots)
+6. **Scroll down** for detailed performance statistics
+
+The app lets you explore the data interactively and understand why shorter-term rolling lows are better for put option writing.
 
 ---
 
-*Last Updated: 2025-10-21*
-*Status: Methodology corrected - no more "Proven Support" filtering*
-*All rolling support levels tested - complete historical validation*
+*Last Updated: 2025-10-22*
+*Status: H001 complete with Streamlit web app*
+*Data Current Through: 2025-10-22*

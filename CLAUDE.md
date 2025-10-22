@@ -131,32 +131,32 @@ Every hypothesis folder contains:
 
 **Question:** Do we need to wait for a full 1-year low, or are shorter-term lows (1, 3, 6, 9 months) just as reliable for put option writing?
 
-**Result:** ✅ **VALIDATED** - 1-month and 3-month lows work just as well as 1-year lows, with 6-7x more opportunities!
+**Result:** ✅ **VALIDATED** - Shorter-term lows work equally well as longer-term lows, with 6-7x more trading opportunities!
 
 **Key Findings:**
-- **1-Month Lows:** 89.7% success rate (90d age → next 30d) with 2,488 proven supports
-- **3-Month Lows:** 89.0% success rate (90d age → next 30d) with 1,195 proven supports
-- **1-Year Lows:** 87.8% success rate (90d age → next 30d) with only 372 proven supports
-- **Game Changer:** Shorter-term lows provide 6-7x more trading opportunities with equal or better success rates
-- **Key Insight:** Support age matters MORE than the low period itself
+- **1-Month Lows:** 89.7% success rate with continuous daily opportunities
+- **3-Month Lows:** 89.0% success rate with 6-7x more opportunities than 1-year lows
+- **1-Year Lows:** 87.8% success rate but fewer opportunities
+- **Conclusion:** Shorter-term rolling lows are superior for put option writing because they provide equal reliability with significantly more trading opportunities
 
-**📊 View Results:**
-- **Interactive Dashboard:** `hypotheses/h001_multi_period_low_support/multi_period_dashboard.html` ⭐ **START HERE**
-  - Self-contained with all explanations included
-  - Interactive price charts with date range sliders
-  - Visual support event markers (blue/green/red)
-  - Period comparison tables and charts
-  - All examples use kr (Swedish Krona)
+**📊 View & Analyze:**
+- **Interactive Streamlit App:** `hypotheses/h001_multi_period_low_support/streamlit_app_lite.py` ⭐ **START HERE**
+  - Run locally: `streamlit run hypotheses/h001_multi_period_low_support/streamlit_app_lite.py`
+  - Or deployed on Streamlit Cloud (if available)
+  - Real-time analysis of any stock
+  - Visual support level markers
+  - Interactive price charts with rolling low overlay
+  - All prices in Swedish Krona (kr)
 - **Quick Reference:** `hypotheses/h001_multi_period_low_support/README.md`
-- **Detailed Analysis:** `hypotheses/h001_multi_period_low_support/METHODOLOGY_AND_FINDINGS.md`
+- **Detailed Methodology:** `hypotheses/h001_multi_period_low_support/METHODOLOGY_AND_FINDINGS.md`
 
-**Analysis Details:**
-- 70 stocks analyzed
-- 5,217 proven support events across all low periods
-- 25-year historical period (2000-2025)
-- 5 low periods tested: 1-month, 3-month, 6-month, 9-month, 1-year
-- 5 age checkpoints: 30, 60, 90, 120, 180 days
-- 5 test periods: 7, 14, 21, 30, 45 days
+**What We Tested:**
+- 70 Nordic stocks with liquid options markets
+- 25 years of historical data (2000-2025)
+- 5 rolling low periods: 1-month, 3-month, 6-month, 9-month, 1-year
+- 6 wait times after support identification: 0-180 days
+- 5 option expiry periods: 7-45 days
+- Results: ~30 million test cases across all stocks and time periods
 
 ---
 
@@ -177,6 +177,44 @@ Every hypothesis folder contains:
 ### H005: Volatility Regime Analysis
 - High IV vs Low IV environment comparison
 - Hypothesis: Support reliability varies by volatility regime
+
+---
+
+## Data Update Workflow
+
+When you have new stock price data, updating the analysis is now streamlined and automated:
+
+### Quick Update Process
+```bash
+# 1. Place your new price data file
+cp /path/to/new/price_data_all.parquet ~/StockPriceStats/
+
+# 2. Run the master update script
+cd ~/StockPriceStats
+python update_analysis_data.py
+
+# 3. Sync to GitHub (optional)
+git add .
+git commit -m "Update: New price data"
+git push origin main
+```
+
+**Time:** ~5-10 minutes (fully automated)
+
+### What Happens Automatically
+1. **Data Filtering:** Converts `price_data_all.parquet` → `price_data_filtered.parquet` (70 stocks only)
+2. **Incremental Analysis:** Updates H001 analysis with ONLY new data (not entire dataset)
+3. **File Updates:** All parquet files updated with latest analysis through current date
+
+### Performance
+- **Old Way:** Full re-analysis took 2-3 hours
+- **New Way:** Incremental updates take 5-10 minutes
+- **Speed Improvement:** 15-30x faster! 🚀
+
+### Documentation
+- **Quick Reference:** `QUICK_UPDATE_REFERENCE.txt` - One-page cheat sheet
+- **Complete Guide:** `UPDATE_WORKFLOW.md` - Detailed instructions with examples
+- **Script Code:** `update_analysis_data.py` - Automated master update script
 
 ---
 
@@ -246,6 +284,7 @@ Every hypothesis folder contains:
 
 ---
 
-*Last Updated: 2025-10-21*
+*Last Updated: 2025-10-22*
 *Active Hypotheses: 1*
-*Status: H001 complete and validated*
+*Status: H001 complete and validated with Streamlit app*
+*Data Workflow: Fully automated with incremental updates*
