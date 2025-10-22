@@ -312,22 +312,28 @@ def calculate_downside_risk(period_name):
         stock_results = immediate_supports[immediate_supports['stock'] == stock]
 
         # Get failed supports with break percentage
+        # break_pct is negative when price goes below support
         failed_results = stock_results[
             (stock_results['success'] == False) &
             (stock_results['break_pct'].notna())
         ]
 
         if len(failed_results) > 0:
-            # break_pct is negative when price goes below support
-            avg_downside = abs(failed_results['break_pct'].mean())
-            max_downside = abs(failed_results['break_pct'].min())
+            # Convert to series to avoid issues
+            break_pcts = pd.to_numeric(failed_results['break_pct'], errors='coerce')
+            break_pcts = break_pcts.dropna()
 
-            stock_stats.append({
-                'Stock': stock,
-                'Avg Downside %': round(avg_downside, 2),
-                'Max Downside %': round(max_downside, 2),
-                'Breaks Analyzed': len(failed_results)
-            })
+            if len(break_pcts) > 0:
+                # break_pct is negative, so take absolute value
+                avg_downside = abs(break_pcts.mean()) * 100  # Convert to percentage
+                max_downside = abs(break_pcts.min()) * 100   # Worst case
+
+                stock_stats.append({
+                    'Stock': stock,
+                    'Avg Downside %': round(avg_downside, 2),
+                    'Max Downside %': round(max_downside, 2),
+                    'Breaks Analyzed': len(break_pcts)
+                })
 
     if stock_stats:
         df_stats = pd.DataFrame(stock_stats)
