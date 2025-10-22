@@ -275,7 +275,7 @@ def main():
         hovermode='x unified'
     )
 
-    st.plotly_chart(fig, width='stretch')
+    st.plotly_chart(fig, width='stretch', config={'responsive': True, 'displayModeBar': True})
 
     # Show data table
     st.subheader("Price Data Table")
