@@ -38,6 +38,9 @@ env/
 .streamlit/secrets.toml
 .streamlit/__pycache__/
 
+# Old/legacy files
+hypotheses/*/OLD/
+
 # Data (if too large, comment out if you want to upload)
 # .parquet files are included for Streamlit Cloud
 # but you can exclude them here if you prefer

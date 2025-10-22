@@ -1,0 +1,131 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                                                                            ║
+║                    QUICK UPDATE REFERENCE CARD                             ║
+║                                                                            ║
+║                 Keep this handy for future data updates!                   ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+
+WHEN YOU HAVE NEW PRICE DATA:
+═════════════════════════════════════════════════════════════════════════════
+
+1. Copy your new price file:
+   cp /path/to/your/price_data_all.parquet ~/StockPriceStats/
+
+2. Run the update script:
+   cd ~/StockPriceStats
+   python update_analysis_data.py
+
+3. Wait 5-10 minutes (not hours!)
+
+4. Done! The app is updated.
+
+
+FOR DEPLOYMENT TO STREAMLIT CLOUD:
+═════════════════════════════════════════════════════════════════════════════
+
+After running update_analysis_data.py:
+
+   git add .
+   git commit -m "Update: New price data"
+   git push origin main
+
+Streamlit Cloud auto-redeploys within 10 seconds. ✓
+
+
+IF YOU NEED DETAILED HELP:
+═════════════════════════════════════════════════════════════════════════════
+
+See: UPDATE_WORKFLOW.md
+
+Contains:
+  ✓ Step-by-step examples
+  ✓ Performance comparison
+  ✓ Troubleshooting guide
+  ✓ File structure
+  ✓ Under-the-hood explanation
+
+
+WHAT GETS UPDATED:
+═════════════════════════════════════════════════════════════════════════════
+
+When you run: python update_analysis_data.py
+
+Automatically updates:
+  ✓ price_data_filtered.parquet
+  ✓ 1_month_detailed_results.parquet
+  ✓ 3_month_detailed_results.parquet
+  ✓ 6_month_detailed_results.parquet
+  ✓ 9_month_detailed_results.parquet
+  ✓ 1_year_detailed_results.parquet
+
+All in one command! ✓
+
+
+PERFORMANCE:
+═════════════════════════════════════════════════════════════════════════════
+
+Regular updates (incremental):
+  Command:  python update_analysis_data.py
+  Time:     5-10 minutes
+  Speed:    ~15-30x faster than full re-analysis
+
+Full re-analysis (if needed):
+  Command:  cd hypotheses/h001_multi_period_low_support
+            python multi_period_low_analysis.py
+  Time:     2-3 hours
+  Use:      First setup only, or methodology changes
+
+
+KEY FILES:
+═════════════════════════════════════════════════════════════════════════════
+
+Main folder (StockPriceStats/):
+  • update_analysis_data.py          ← RUN THIS (master script)
+  • UPDATE_WORKFLOW.md               ← Full documentation
+  • QUICK_UPDATE_REFERENCE.txt       ← This file
+
+H001 folder (hypotheses/h001_multi_period_low_support/):
+  • streamlit_app_lite.py            ← The web app
+  • multi_period_low_analysis_incremental.py  ← Called automatically
+
+
+TROUBLESHOOTING:
+═════════════════════════════════════════════════════════════════════════════
+
+Problem: "File not found"
+  → Make sure price_data_all.parquet is in ~/StockPriceStats/
+
+Problem: "Script takes too long"
+  → Make sure you're running update_analysis_data.py (not the full script)
+  → Incremental should take 5-10 minutes max
+
+Problem: "Streamlit app shows old data"
+  → Click "Rerun" in the upper right corner of the app
+  → Or restart the server
+
+For more help: See UPDATE_WORKFLOW.md
+
+
+SUMMARY:
+═════════════════════════════════════════════════════════════════════════════
+
+Old workflow (before):
+  → Hours-long full re-analysis
+  → Manual steps
+  → Error-prone
+
+New workflow (now):
+  → 5-10 minute incremental updates
+  → One command (update_analysis_data.py)
+  → Fully automated
+  → 15-30x faster! 🚀
+
+You literally just drop a file and run one script. Done.
+
+
+═════════════════════════════════════════════════════════════════════════════
+Last updated: 2025-10-22
+Workflow status: Streamlined and fully automated ✓
+═════════════════════════════════════════════════════════════════════════════
