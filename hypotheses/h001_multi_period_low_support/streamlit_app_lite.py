@@ -59,12 +59,29 @@ def load_all_price_data():
 
 @st.cache_data
 def load_results_for_period(period_name):
-    """Load detailed results for a specific period"""
+    """Load detailed results for a specific period with memory optimization"""
     file = f'{period_name.lower().replace(" ", "_").replace("-", "_")}_detailed_results.parquet'
     filepath = Path(H001_RESULTS_DIR) / file
-    if filepath.exists():
-        return pd.read_parquet(str(filepath))
-    return None
+
+    if not filepath.exists():
+        return None
+
+    try:
+        # Load with only essential columns to reduce memory usage
+        # This is much faster than loading all columns
+        cols_to_load = [
+            'stock', 'support_date', 'support_level',
+            'wait_days', 'success', 'days_to_break'
+        ]
+
+        # Try to load only the columns we need
+        df = pd.read_parquet(str(filepath), columns=cols_to_load)
+        return df
+    except Exception as e:
+        # If loading fails (timeout, memory), return None
+        # The app will still work without the H001 analysis
+        print(f"Warning: Could not load H001 results for {period_name}: {str(e)[:100]}")
+        return None
 
 def calculate_rolling_low(stock_data, period_days):
     """Calculate rolling low for given period using optimized pandas rolling"""
@@ -167,18 +184,23 @@ def main():
 
     # Load H001 results for this stock and period
     period_name = {30: "1-Month", 90: "3-Month", 180: "6-Month", 270: "9-Month", 365: "1-Year"}[period_days]
-    results = load_results_for_period(period_name)
 
-    if results is not None:
-        # Convert support_date to datetime if it's not already
-        results['support_date'] = pd.to_datetime(results['support_date'])
+    try:
+        results = load_results_for_period(period_name)
 
-        # Filter results by stock AND by selected date range
-        results = results[
-            (results['stock'] == selected_stock) &
-            (results['support_date'] >= pd.to_datetime(start_date)) &
-            (results['support_date'] <= pd.to_datetime(end_date))
-        ].copy()
+        if results is not None:
+            # Convert support_date to datetime if it's not already
+            results['support_date'] = pd.to_datetime(results['support_date'])
+
+            # Filter results by stock AND by selected date range
+            results = results[
+                (results['stock'] == selected_stock) &
+                (results['support_date'] >= pd.to_datetime(start_date)) &
+                (results['support_date'] <= pd.to_datetime(end_date))
+            ].copy()
+    except Exception as e:
+        print(f"Error processing H001 results: {str(e)[:100]}")
+        results = None
 
     # Display info
     st.subheader(f"{selected_stock}")
