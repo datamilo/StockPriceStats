@@ -300,6 +300,10 @@ def calculate_downside_risk(period_name):
     if results is None or len(results) == 0:
         return None
 
+    # Check if break_pct column exists
+    if 'break_pct' not in results.columns:
+        return None
+
     results['support_date'] = pd.to_datetime(results['support_date'])
     immediate_supports = results[results['wait_days'] == 0].copy()
 
@@ -309,31 +313,35 @@ def calculate_downside_risk(period_name):
     stock_stats = []
 
     for stock in immediate_supports['stock'].unique():
-        stock_results = immediate_supports[immediate_supports['stock'] == stock]
+        stock_results = immediate_supports[immediate_supports['stock'] == stock].copy()
 
         # Get failed supports with break percentage
         # break_pct is negative when price goes below support
-        failed_results = stock_results[
-            (stock_results['success'] == False) &
-            (stock_results['break_pct'].notna())
-        ]
+        try:
+            failed_results = stock_results.loc[
+                (stock_results['success'] == False) &
+                (stock_results['break_pct'].notna())
+            ]
 
-        if len(failed_results) > 0:
-            # Convert to series to avoid issues
-            break_pcts = pd.to_numeric(failed_results['break_pct'], errors='coerce')
-            break_pcts = break_pcts.dropna()
+            if len(failed_results) > 0:
+                # Convert to series to avoid issues
+                break_pcts = pd.to_numeric(failed_results['break_pct'], errors='coerce')
+                break_pcts = break_pcts.dropna()
 
-            if len(break_pcts) > 0:
-                # break_pct is negative, so take absolute value
-                avg_downside = abs(break_pcts.mean()) * 100  # Convert to percentage
-                max_downside = abs(break_pcts.min()) * 100   # Worst case
+                if len(break_pcts) > 0:
+                    # break_pct is negative, so take absolute value
+                    avg_downside = abs(break_pcts.mean()) * 100  # Convert to percentage
+                    max_downside = abs(break_pcts.min()) * 100   # Worst case
 
-                stock_stats.append({
-                    'Stock': stock,
-                    'Avg Downside %': round(avg_downside, 2),
-                    'Max Downside %': round(max_downside, 2),
-                    'Breaks Analyzed': len(break_pcts)
-                })
+                    stock_stats.append({
+                        'Stock': stock,
+                        'Avg Downside %': round(avg_downside, 2),
+                        'Max Downside %': round(max_downside, 2),
+                        'Breaks Analyzed': len(break_pcts)
+                    })
+        except KeyError:
+            # Skip if break_pct column is missing for this stock
+            continue
 
     if stock_stats:
         df_stats = pd.DataFrame(stock_stats)
