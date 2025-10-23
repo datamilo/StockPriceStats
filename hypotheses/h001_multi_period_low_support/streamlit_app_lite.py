@@ -884,8 +884,9 @@ def main():
                 cols = st.columns(5)
                 for idx, (_, row) in enumerate(top_5.iterrows()):
                     with cols[idx]:
+                        # Downside risk should show as negative (red, pointing down) for higher values = worse
                         st.metric(row['Stock'], f"{row['Avg Downside %']:.2f}%",
-                                 f"max: {row['Max Downside %']:.2f}%")
+                                 f"-{row['Max Downside %']:.2f}%")
 
                 st.subheader("All Stocks")
                 st.dataframe(data.reset_index(drop=True), width='stretch', hide_index=True)
