@@ -940,9 +940,11 @@ def main():
                     top_5 = data.head(5)
                     cols = st.columns(5)
                     for idx, (_, row) in enumerate(top_5.iterrows()):
-                        delta = f"+{row['Improvement %']:.1f}%" if row['Improvement %'] > 0 else f"{row['Improvement %']:.1f}%"
                         with cols[idx]:
-                            st.metric(row['Stock'], f"{row['Improvement %']:.1f}%",
+                            # Show improvement as delta: positive is good (green ↑), negative is bad (red ↓)
+                            improvement = row['Improvement %']
+                            delta_display = f"+{improvement:.1f}%" if improvement >= 0 else f"{improvement:.1f}%"
+                            st.metric(row['Stock'], delta_display,
                                      f"{row['Immediate %']:.1f}% → {row['After Wait %']:.1f}%")
 
                     st.dataframe(data.reset_index(drop=True), width='stretch', hide_index=True)
