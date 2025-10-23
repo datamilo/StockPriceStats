@@ -455,7 +455,7 @@ def calculate_temporal_patterns(period_name):
     stock_stats = []
 
     for stock in immediate_supports['stock'].unique():
-        stock_results = immediate_supports[immediate_supports['stock'] == stock]
+        stock_results = immediate_supports[immediate_supports['stock'] == stock].copy()
         stock_results['month'] = stock_results['support_date'].dt.month
 
         # Calculate success rate by month
