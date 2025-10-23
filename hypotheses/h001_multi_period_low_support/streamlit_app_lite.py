@@ -331,9 +331,9 @@ def calculate_downside_risk(period_name):
 
                 if len(break_pcts) > 0:
                     # break_pct is already in decimal format (e.g., -0.087796 = -8.78%)
-                    # Just take absolute value (negative indicates downside)
-                    avg_downside = abs(break_pcts.mean())
-                    max_downside = abs(break_pcts.min())   # Worst case (most negative)
+                    # Keep as negative (already negative, just multiply by 100 for percentage)
+                    avg_downside = break_pcts.mean() * 100  # Negative percentage
+                    max_downside = break_pcts.min() * 100   # Worst case (most negative)
 
                     stock_stats.append({
                         'Stock': stock,
@@ -884,9 +884,9 @@ def main():
                 cols = st.columns(5)
                 for idx, (_, row) in enumerate(top_5.iterrows()):
                     with cols[idx]:
-                        # Downside risk should show as negative (red, pointing down) for higher values = worse
+                        # Downside risk shows as negative (red, pointing down) for higher values = worse
                         st.metric(row['Stock'], f"{row['Avg Downside %']:.2f}%",
-                                 f"-{row['Max Downside %']:.2f}%")
+                                 f"{row['Max Downside %']:.2f}%")
 
                 st.subheader("All Stocks")
                 st.dataframe(data.reset_index(drop=True), width='stretch', hide_index=True)
