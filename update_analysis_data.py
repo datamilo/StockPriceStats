@@ -74,17 +74,45 @@ def run_command(description, script_path, working_dir=None):
 
 
 def verify_input_file():
-    """Verify that price_data_all.parquet exists"""
+    """Verify that price_data_all.parquet exists, copy from OneDrive if needed"""
+    import shutil
+
     print_header("PRE-FLIGHT CHECKS")
 
+    # Source path in OneDrive (WSL path)
+    ONEDRIVE_SOURCE = Path("/mnt/c/Users/Gustaf/OneDrive/OptionsData/price_data_all.parquet")
+
+    # Check if OneDrive source exists and is newer
+    if ONEDRIVE_SOURCE.exists():
+        onedrive_mtime = ONEDRIVE_SOURCE.stat().st_mtime
+
+        # Check if local file exists and compare modification times
+        if PRICE_DATA_ALL.exists():
+            local_mtime = PRICE_DATA_ALL.stat().st_mtime
+            if onedrive_mtime > local_mtime:
+                print(f"✓ Found newer price data in OneDrive")
+                print(f"  Copying from: {ONEDRIVE_SOURCE}")
+                shutil.copy2(ONEDRIVE_SOURCE, PRICE_DATA_ALL)
+                print(f"  ✓ Updated local copy")
+            else:
+                print(f"✓ Local price_data_all.parquet is up to date")
+        else:
+            print(f"✓ Copying price data from OneDrive")
+            print(f"  Source: {ONEDRIVE_SOURCE}")
+            shutil.copy2(ONEDRIVE_SOURCE, PRICE_DATA_ALL)
+            print(f"  ✓ Copied to project folder")
+
+    # Verify local file now exists
     if not PRICE_DATA_ALL.exists():
         print(f"✗ Input file not found: {PRICE_DATA_ALL}")
-        print("\nPlease ensure price_data_all.parquet is in the main folder:")
-        print(f"  {PROJECT_ROOT}/")
+        print(f"✗ OneDrive source also not found: {ONEDRIVE_SOURCE}")
+        print("\nPlease ensure price_data_all.parquet is in one of these locations:")
+        print(f"  1. {PROJECT_ROOT}/")
+        print(f"  2. {ONEDRIVE_SOURCE}")
         return False
 
     size_mb = PRICE_DATA_ALL.stat().st_size / (1024*1024)
-    print(f"✓ Found price_data_all.parquet ({size_mb:.1f} MB)")
+    print(f"✓ Using price_data_all.parquet ({size_mb:.1f} MB)")
 
     if not FILTER_SCRIPT.exists():
         print(f"✗ Filter script not found: {FILTER_SCRIPT}")

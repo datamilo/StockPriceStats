@@ -285,6 +285,51 @@ Success rates show the historical probability that a put option would expire wor
 
 ---
 
+## Updating Data with New Stock Prices
+
+When you have new stock price data and want to update the analysis:
+
+### Quick Update Process (5-10 minutes)
+```bash
+# Simply run the automated update script
+cd ~/StockPriceStats
+python update_analysis_data.py
+
+# That's it! The script automatically:
+#   ✓ Fetches latest data from OneDrive (C:\Users\Gustaf\OneDrive\OptionsData)
+#   ✓ Filters data to 70 options-enabled stocks
+#   ✓ Analyzes only NEW dates (incremental)
+#   ✓ Updates all 5 period result files
+#   ✓ Commits changes to git
+#   ✓ Pushes to GitHub
+```
+
+**Note:** The script automatically checks for the latest `price_data_all.parquet` in your OneDrive folder and copies it if it's newer than the local version. No manual copying needed!
+
+### What Gets Updated
+- `price_data_filtered.parquet` - Filtered stock data (70 stocks)
+- `1_month_detailed_results.parquet` - Rolling low analysis results
+- `3_month_detailed_results.parquet` - Rolling low analysis results
+- `6_month_detailed_results.parquet` - Rolling low analysis results
+- `9_month_detailed_results.parquet` - Rolling low analysis results
+- `1_year_detailed_results.parquet` - Rolling low analysis results
+
+### Performance
+- **Incremental updates:** 5-10 minutes (recommended for regular updates)
+- **Full re-analysis:** 2-3 hours (only needed for methodology changes)
+
+### Viewing Updated Data
+- **Local:** Refresh the Streamlit app (click "Rerun" in upper-right corner)
+- **Streamlit Cloud:** Auto-redeploys within 10 seconds after GitHub push
+
+### Detailed Documentation
+For comprehensive update instructions, troubleshooting, and examples:
+- **Quick Reference:** `../../QUICK_UPDATE_REFERENCE.txt`
+- **Complete Guide:** `../../UPDATE_WORKFLOW.md`
+- **Update Script:** `../../update_analysis_data.py`
+
+---
+
 *Last Updated: 2025-10-22*
 *Status: H001 complete with Streamlit web app*
 *Data Current Through: 2025-10-22*
