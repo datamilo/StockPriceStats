@@ -139,6 +139,15 @@ def analyze_support_breaks(stock_data):
     if len(breaks) > 1:
         breaks['days_since_last_break'] = breaks['Date'].diff().dt.days
 
+    # Calculate days since last break (to today)
+    days_since_last_break = (stock_data['Date'].max() - breaks['Date'].max()).days
+
+    # Calculate days before first break
+    days_before_first_break = (breaks['Date'].min() - stock_data['Date'].min()).days
+
+    # Stability percentage (days without breaks)
+    stability_pct = ((len(stock_data) - len(breaks)) / len(stock_data) * 100) if len(stock_data) > 0 else 0
+
     # Summary statistics
     stats = {
         'total_breaks': len(breaks),
@@ -149,7 +158,12 @@ def analyze_support_breaks(stock_data):
         'avg_drop_pct': breaks['drop_pct'].mean(),
         'max_drop_pct': breaks['drop_pct'].min(),  # Most negative = biggest drop
         'total_trading_days': len(stock_data),
-        'breaks_per_year': (len(breaks) / len(stock_data) * 252) if len(stock_data) > 0 else 0
+        'breaks_per_year': (len(breaks) / len(stock_data) * 252) if len(stock_data) > 0 else 0,
+        'days_since_last_break': days_since_last_break,
+        'days_before_first_break': days_before_first_break,
+        'stability_pct': stability_pct,
+        'first_break_date': breaks['Date'].min(),
+        'last_break_date': breaks['Date'].max()
     }
 
     return breaks, stats
@@ -739,19 +753,33 @@ def main():
             st.metric("Support Breaks", f"{stats['total_breaks']}",
                      help="Number of times the rolling low decreased (support was broken)")
         with col2:
-            if stats['avg_days_between'] is not None:
-                st.metric("Avg Days Between Breaks", f"{stats['avg_days_between']:.0f}d",
-                         delta=f"Median: {stats['median_days_between']:.0f}d",
-                         help="Average time a support level lasts before breaking (calendar days)")
-            else:
-                st.metric("Avg Days Between Breaks", "N/A",
-                         help="Need at least 2 breaks to calculate")
+            st.metric("Days Since Last Break", f"{stats['days_since_last_break']}d",
+                     help=f"Current support has held since {stats['last_break_date'].strftime('%Y-%m-%d')}")
         with col3:
-            st.metric("Avg Break Magnitude", f"{stats['avg_drop_pct']:.2f}%",
-                     help="Average % drop when support breaks")
+            st.metric("Stability", f"{stats['stability_pct']:.1f}%",
+                     help="% of trading days where support held (didn't break)")
         with col4:
             st.metric("Breaks Per Year", f"{stats['breaks_per_year']:.1f}",
                      help="Annualized frequency of support breaks")
+
+        # Additional context row
+        st.write("---")
+        context_col1, context_col2, context_col3 = st.columns(3)
+
+        with context_col1:
+            st.metric("Days Before First Break", f"{stats['days_before_first_break']}d",
+                     help=f"Support held from start until first break on {stats['first_break_date'].strftime('%Y-%m-%d')}")
+        with context_col2:
+            if stats['avg_days_between'] is not None:
+                st.metric("Avg Days Between Breaks", f"{stats['avg_days_between']:.0f}d",
+                         delta=f"Median: {stats['median_days_between']:.0f}d",
+                         help="When breaks occur, how much time typically passes between them (volatility measure)")
+            else:
+                st.metric("Avg Days Between Breaks", "N/A",
+                         help="Need at least 2 breaks to calculate")
+        with context_col3:
+            st.metric("Avg Break Magnitude", f"{stats['avg_drop_pct']:.2f}%",
+                     help="Average % drop when support breaks")
 
         # Show break details
         st.write("---")
