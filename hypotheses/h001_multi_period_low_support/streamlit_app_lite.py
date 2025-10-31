@@ -156,7 +156,7 @@ def analyze_support_breaks(stock_data):
         'avg_drop_pct': breaks['drop_pct'].mean(),
         'max_drop_pct': breaks['drop_pct'].min(),  # Most negative = biggest drop
         'total_trading_days': len(stock_data),
-        'breaks_per_year': (len(breaks) / len(stock_data) * 252) if len(stock_data) > 0 else 0,
+        'trading_days_per_break': len(stock_data) / len(breaks) if len(breaks) > 0 else None,
         'days_since_last_break': days_since_last_break,
         'days_before_first_break': days_before_first_break,
         'stability_pct': stability_pct,
@@ -756,8 +756,12 @@ def main():
             st.metric("Stability", f"{stats['stability_pct']:.1f}%",
                      help="% of trading days where support held (didn't break)")
         with col4:
-            st.metric("Breaks Per Year", f"{stats['breaks_per_year']:.1f}",
-                     help="Annualized frequency of support breaks")
+            if stats['trading_days_per_break'] is not None:
+                st.metric("Trading Days per Break", f"{stats['trading_days_per_break']:.0f}",
+                         help="Average number of trading days between support breaks in the selected period")
+            else:
+                st.metric("Trading Days per Break", "N/A",
+                         help="No breaks to calculate")
 
         # Additional context row
         st.write("---")
