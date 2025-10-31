@@ -1,13 +1,11 @@
 """
-Support Level Analysis Dashboard - Fact-Based Approach
+Support Level Analysis Dashboard
 
-This dashboard shows PURE FACTS about support levels:
+Analyzes support levels based on rolling lows:
 - When support levels break (rolling low decreases)
 - How long support levels last
 - Magnitude of breaks
 - Frequency of breaks
-
-NO option strategy assumptions - just the raw data for user interpretation.
 """
 
 import streamlit as st
@@ -28,7 +26,7 @@ H001_RESULTS_DIR = SCRIPT_DIR
 
 # Page config
 st.set_page_config(page_title="Support Level Analysis", layout="wide")
-st.title("📊 Support Level Analysis - Fact-Based Approach")
+st.title("📊 Support Level Analysis")
 
 # Cache data loading for performance
 @st.cache_data
@@ -112,7 +110,7 @@ def calculate_rolling_low(stock_data, period_days):
 
 
 def analyze_support_breaks(stock_data):
-    """Analyze support level breaks - PURE FACTS, no option assumptions
+    """Analyze support level breaks
 
     Returns:
     - breaks: DataFrame with all support breaks
@@ -584,7 +582,7 @@ def main():
     with st.spinner("Loading price data..."):
         df = load_all_price_data()
 
-    # Single-stock analysis (fact-based, no option strategy assumptions)
+    # Single-stock analysis
     # Sidebar controls for Stock Analysis
     st.sidebar.header("📊 Configuration")
 
@@ -738,15 +736,14 @@ def main():
     config = {'responsive': True, 'displayModeBar': True, 'displaylogo': False}
     st.plotly_chart(fig, config=config)
 
-    # Support level statistics - FACT-BASED
-    st.subheader("Support Level Facts")
-    st.write("*Pure facts about support breaks - no option strategy assumptions*")
+    # Support level statistics
+    st.subheader("Support Level Statistics")
 
-    # Calculate fact-based metrics from price data
+    # Calculate support break metrics
     breaks, stats = analyze_support_breaks(stock_data)
 
     if breaks is not None and stats is not None:
-        # Display fact-based metrics
+        # Display metrics
         col1, col2, col3, col4 = st.columns(4)
 
         with col1:
