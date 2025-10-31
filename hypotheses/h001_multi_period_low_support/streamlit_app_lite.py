@@ -751,7 +751,7 @@ def main():
                      help="Number of times the rolling low decreased (support was broken)")
         with col2:
             st.metric("Days Since Last Break", f"{stats['days_since_last_break']}d",
-                     help=f"Current support has held since {stats['last_break_date'].strftime('%Y-%m-%d')}")
+                     help=f"Calendar days since last break on {stats['last_break_date'].strftime('%Y-%m-%d')}")
         with col3:
             st.metric("Stability", f"{stats['stability_pct']:.1f}%",
                      help="% of trading days where support held (didn't break)")
@@ -769,12 +769,12 @@ def main():
 
         with context_col1:
             st.metric("Days Before First Break", f"{stats['days_before_first_break']}d",
-                     help=f"Support held from start until first break on {stats['first_break_date'].strftime('%Y-%m-%d')}")
+                     help=f"Calendar days from start until first break on {stats['first_break_date'].strftime('%Y-%m-%d')}")
         with context_col2:
             if stats['avg_days_between'] is not None:
                 st.metric("Avg Days Between Breaks", f"{stats['avg_days_between']:.0f}d",
                          delta=f"Median: {stats['median_days_between']:.0f}d",
-                         help="When breaks occur, how much time typically passes between them (volatility measure)")
+                         help="Calendar days between consecutive breaks (volatility measure)")
             else:
                 st.metric("Avg Days Between Breaks", "N/A",
                          help="Need at least 2 breaks to calculate")
@@ -790,10 +790,10 @@ def main():
             detail_col1, detail_col2, detail_col3 = st.columns(3)
             with detail_col1:
                 st.metric("Shortest Duration", f"{stats['min_days_between']:.0f} days",
-                         help="Shortest time between breaks")
+                         help="Shortest calendar days between consecutive breaks")
             with detail_col2:
                 st.metric("Longest Duration", f"{stats['max_days_between']:.0f} days",
-                         help="Longest time between breaks")
+                         help="Longest calendar days between consecutive breaks")
             with detail_col3:
                 st.metric("Biggest Break", f"{stats['max_drop_pct']:.2f}%",
                          help="Largest % drop when support broke")
@@ -802,7 +802,7 @@ def main():
         st.write("---")
         st.write("**Detailed Break Events:**")
         breaks_display = breaks[['Date', 'prev_support', 'new_support', 'drop_pct', 'days_since_last_break']].copy()
-        breaks_display.columns = ['Date', 'Previous Support', 'New Support', 'Drop %', 'Days Since Last Break']
+        breaks_display.columns = ['Date', 'Previous Support', 'New Support', 'Drop %', 'Calendar Days Since Last']
         breaks_display['Date'] = breaks_display['Date'].dt.strftime('%Y-%m-%d')
         st.dataframe(breaks_display, width='stretch', hide_index=True)
 
