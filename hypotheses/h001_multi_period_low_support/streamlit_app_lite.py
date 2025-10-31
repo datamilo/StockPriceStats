@@ -164,7 +164,10 @@ def calculate_stock_success_rates(period_name):
 
 
 def calculate_stock_resilience(period_name):
-    """Calculate average days to break support for all stocks in a given period"""
+    """Calculate average days to break support for all stocks in a given period
+
+    Note: 'days_to_break' represents calendar days, not market/trading days
+    """
     results = load_results_for_period(period_name)
 
     if results is None or len(results) == 0:
@@ -707,7 +710,7 @@ def main():
                 st.metric("Success Rate", f"{success_rate:.1f}%",
                          delta=f"{successful} ✓ / {failed} ✗")
             with col3:
-                st.metric("Avg Days to Break", f"{avg_days_to_break:.1f}d" if avg_days_to_break > 0 else "N/A")
+                st.metric("Avg Days to Break (Calendar)", f"{avg_days_to_break:.1f}d" if avg_days_to_break > 0 else "N/A")
             with col4:
                 st.metric("Rolling Low Changes", f"{change_frequency:.1f}%")
 
@@ -826,7 +829,7 @@ def main():
             col1, col2 = st.columns(2)
 
             with col1:
-                st.write("**Days to Break Support** - How long before support breaks")
+                st.write("**Days to Break Support** - How long before support breaks (calendar days)")
                 with st.spinner(f"Calculating resilience for {period_name_tp}..."):
                     data = calculate_stock_resilience(period_name_tp)
 

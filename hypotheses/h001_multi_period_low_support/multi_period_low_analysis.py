@@ -12,6 +12,9 @@ KEY CONCEPTS:
 5. We test if price stayed ABOVE the support level during the option period
 6. Success = Option expires worthless (price never touched support)
 
+NOTE: All time measurements (wait_days, expiry_days, days_to_break) use CALENDAR DAYS,
+not market/trading days
+
 TIME WINDOW CONSTRAINTS:
 - 1-month low: can only wait 0-30 days (max)
 - 3-month low: can wait 0-90 days (max)
@@ -152,6 +155,7 @@ def analyze_stock_for_period(args):
                         break_data = option_period_data[option_period_data['Low'] < rolling_low]
                         if len(break_data) > 0:
                             first_break = break_data.iloc[0]
+                            # Calculate calendar days (not market days) to break
                             days_to_break = (first_break['Date'] - test_date).days
                             break_pct = ((first_break['Low'] - rolling_low) / rolling_low) * 100
                         else:
