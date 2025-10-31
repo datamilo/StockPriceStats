@@ -110,7 +110,11 @@ def calculate_rolling_low(stock_data, period_days):
     return stock_data
 
 def calculate_stock_success_rates(period_name):
-    """Calculate success rates for all stocks in a given period"""
+    """Calculate success rates for all stocks in a given period
+
+    Note: Success rate is calculated PER OPTION CONTRACT TEST, not per unique support.
+    This is correct because we're testing different expiry periods on the same support.
+    """
     results = load_results_for_period(period_name)
 
     if results is None or len(results) == 0:
@@ -131,7 +135,7 @@ def calculate_stock_success_rates(period_name):
     for stock in immediate_supports['stock'].unique():
         stock_results = immediate_supports[immediate_supports['stock'] == stock]
 
-        # Count successes and failures
+        # Count successes and failures across all option tests
         successful = (stock_results['success'] == True).sum()
         failed = (stock_results['success'] == False).sum()
         total = successful + failed
@@ -139,20 +143,19 @@ def calculate_stock_success_rates(period_name):
         if total > 0:
             success_rate = (successful / total) * 100
 
-            # Calculate average days to break for failed supports
-            failed_results = stock_results[
-                (stock_results['success'] == False) &
-                (stock_results['days_to_break'].notna())
-            ]
-            avg_days_to_break = failed_results['days_to_break'].mean()
+            # Count unique support levels tested
+            unique_supports = stock_results.groupby(
+                stock_results['support_level'].astype(str) + '_' +
+                stock_results['support_date'].dt.strftime('%Y-%m')
+            ).size()
 
             stock_stats.append({
                 'Stock': stock,
-                'Total Supports': total,
+                'Option Tests': total,
                 'Successful': successful,
                 'Failed': failed,
                 'Success Rate %': round(success_rate, 1),
-                'Avg Days to Break': round(avg_days_to_break, 1) if pd.notna(avg_days_to_break) else 0
+                'Unique Supports': len(unique_supports)
             })
 
     if stock_stats:
@@ -165,6 +168,9 @@ def calculate_stock_success_rates(period_name):
 
 def calculate_stock_resilience(period_name):
     """Calculate average days to break support for all stocks in a given period
+
+    This uses UNIQUE support levels only (deduplicates consecutive days with same support).
+    For each unique support, we calculate how long it lasted before breaking.
 
     Note: 'days_to_break' represents calendar days, not market/trading days
     """
@@ -182,27 +188,40 @@ def calculate_stock_resilience(period_name):
     if len(immediate_supports) == 0:
         return None
 
-    # Calculate resilience (days to break) per stock
+    # Calculate resilience (days to break) per stock using UNIQUE supports
     stock_stats = []
 
     for stock in immediate_supports['stock'].unique():
-        stock_results = immediate_supports[immediate_supports['stock'] == stock]
+        stock_results = immediate_supports[immediate_supports['stock'] == stock].copy()
 
         # Get failed supports with days to break
         failed_results = stock_results[
             (stock_results['success'] == False) &
             (stock_results['days_to_break'].notna())
-        ]
+        ].copy()
 
         if len(failed_results) > 0:
-            avg_days_to_break = failed_results['days_to_break'].mean()
-            total_failures = len(failed_results)
+            # For each unique support level, find the maximum days_to_break
+            # (which represents the first identification of that support)
+            failed_results['support_key'] = (
+                failed_results['support_level'].astype(str) + '_' +
+                failed_results['support_date'].dt.strftime('%Y-%m')
+            )
+
+            # Group by support level and take the max days_to_break for each unique support
+            unique_supports = failed_results.groupby('support_key').agg({
+                'days_to_break': 'max',  # Max = earliest identification
+                'support_level': 'first'
+            }).reset_index()
+
+            avg_days_to_break = unique_supports['days_to_break'].mean()
+            total_unique_failures = len(unique_supports)
 
             stock_stats.append({
                 'Stock': stock,
                 'Avg Days to Break': round(avg_days_to_break, 1),
-                'Failed Supports': total_failures,
-                'Resilience Score': round(avg_days_to_break * (total_failures / len(stock_results)), 1)
+                'Unique Breaks': total_unique_failures,
+                'Median Days': round(unique_supports['days_to_break'].median(), 1)
             })
 
     if stock_stats:
@@ -669,64 +688,87 @@ def main():
         if results is not None and len(results) > 0:
             # Get unique support levels identified (wait_days == 0)
             immediate_supports = results[results['wait_days'] == 0].copy()
-            unique_supports = immediate_supports[['support_date', 'support_level']].drop_duplicates()
 
-            # Determine success for each unique support
+            # Calculate unique support levels (group by level + month)
+            immediate_supports['support_key'] = (
+                immediate_supports['support_level'].astype(str) + '_' +
+                immediate_supports['support_date'].dt.strftime('%Y-%m')
+            )
+
+            unique_support_keys = immediate_supports['support_key'].unique()
+
+            # For each unique support, check if ANY option contract succeeded
             support_success = {}
-            for _, row in immediate_supports.iterrows():
-                date = row['support_date']
-                level = row['support_level']
-                success = row['success']
-                key = (date, level)
-                if key not in support_success:
-                    support_success[key] = []
-                if pd.notna(success):
-                    support_success[key].append(success)
+            for key in unique_support_keys:
+                key_results = immediate_supports[immediate_supports['support_key'] == key]
+                has_success = (key_results['success'] == True).any()
+                support_success[key] = has_success
 
-            # Calculate statistics
-            successful = sum(1 for v in support_success.values() if any(v))
-            failed = sum(1 for v in support_success.values() if not any(v) and len(v) > 0)
-            total_supports = successful + failed
+            successful = sum(1 for v in support_success.values() if v)
+            failed = sum(1 for v in support_success.values() if not v)
+            total_unique_supports = successful + failed
 
-            success_rate = (successful / total_supports * 100) if total_supports > 0 else 0
+            success_rate = (successful / total_unique_supports * 100) if total_unique_supports > 0 else 0
 
-            # Calculate average days to break for failed supports
+            # Calculate average days to break for UNIQUE failed supports
             failed_results = immediate_supports[
                 (immediate_supports['success'] == False) &
                 (immediate_supports['days_to_break'].notna())
-            ]
-            avg_days_to_break = failed_results['days_to_break'].mean() if len(failed_results) > 0 else 0
+            ].copy()
 
-            # Calculate rolling low change frequency
-            rolling_low_changes = (stock_data['rolling_low'] != stock_data['rolling_low'].shift()).sum()
-            total_days = len(stock_data[stock_data['rolling_low'].notna()])
-            change_frequency = (rolling_low_changes / total_days * 100) if total_days > 0 else 0
+            if len(failed_results) > 0:
+                # For each unique support, take the max days_to_break (earliest identification)
+                unique_failures = failed_results.groupby('support_key')['days_to_break'].max()
+                avg_days_to_break = unique_failures.mean()
+                median_days_to_break = unique_failures.median()
+            else:
+                avg_days_to_break = 0
+                median_days_to_break = 0
+
+            # Count total option contracts tested
+            total_option_tests = len(immediate_supports)
 
             col1, col2, col3, col4 = st.columns(4)
 
             with col1:
-                st.metric("Total Support Levels", f"{total_supports:,}")
+                st.metric("Unique Support Levels", f"{total_unique_supports:,}",
+                         help="Distinct support levels identified (grouped by month)")
             with col2:
                 st.metric("Success Rate", f"{success_rate:.1f}%",
-                         delta=f"{successful} ✓ / {failed} ✗")
+                         delta=f"{successful} ✓ / {failed} ✗",
+                         help="% of unique supports where at least one option contract succeeded")
             with col3:
-                st.metric("Avg Days to Break (Calendar)", f"{avg_days_to_break:.1f}d" if avg_days_to_break > 0 else "N/A")
+                st.metric("Avg Days Until Break", f"{avg_days_to_break:.1f}d" if avg_days_to_break > 0 else "N/A",
+                         delta=f"Median: {median_days_to_break:.1f}d",
+                         help="For unique supports that broke, how long they lasted (calendar days)")
             with col4:
-                st.metric("Rolling Low Changes", f"{change_frequency:.1f}%")
+                st.metric("Total Option Tests", f"{total_option_tests:,}",
+                         help="Total contracts tested (multiple expiries per support)")
 
-            # Additional breakdown
+            # Additional breakdown by expiry period
             st.write("---")
-            breakdown_col1, breakdown_col2, breakdown_col3 = st.columns(3)
+            st.write("**Success Rate by Option Expiry Period:**")
 
-            with breakdown_col1:
-                st.metric("Successful Supports", f"{successful}",
-                         f"{(successful/total_supports*100):.1f}% of total")
-            with breakdown_col2:
-                st.metric("Failed Supports", f"{failed}",
-                         f"{(failed/total_supports*100):.1f}% of total")
-            with breakdown_col3:
-                st.metric("Tested Supports", f"{len(immediate_supports):,}",
-                         "individual tests")
+            expiry_breakdown = []
+            for expiry in [7, 14, 21, 30, 45]:
+                expiry_data = immediate_supports[immediate_supports['expiry_days'] == expiry]
+                if len(expiry_data) > 0:
+                    expiry_success = (expiry_data['success'] == True).sum()
+                    expiry_total = len(expiry_data)
+                    expiry_rate = (expiry_success / expiry_total * 100) if expiry_total > 0 else 0
+                    expiry_breakdown.append({
+                        'Expiry': f'{expiry}d',
+                        'Success Rate': f'{expiry_rate:.1f}%',
+                        'Successful': expiry_success,
+                        'Total Tests': expiry_total
+                    })
+
+            if expiry_breakdown:
+                expiry_cols = st.columns(5)
+                for idx, data in enumerate(expiry_breakdown):
+                    with expiry_cols[idx]:
+                        st.metric(data['Expiry'], data['Success Rate'],
+                                 f"{data['Successful']}/{data['Total Tests']}")
 
         else:
             st.warning(f"No H001 analysis results available for {period_name} {selected_stock} in this date range")
@@ -786,7 +828,7 @@ def main():
                     for idx, (_, row) in enumerate(top_5.iterrows()):
                         with cols[idx]:
                             st.metric(row['Stock'], f"{row['Success Rate %']:.1f}%",
-                                     f"{int(row['Successful'])}/{int(row['Total Supports'])}")
+                                     f"{int(row['Unique Supports'])} unique")
 
                     st.dataframe(data.reset_index(drop=True), width='stretch', hide_index=True)
 
@@ -839,7 +881,7 @@ def main():
                     for idx, (_, row) in enumerate(top_5.iterrows()):
                         with cols[idx]:
                             st.metric(row['Stock'], f"{row['Avg Days to Break']:.1f}d",
-                                     f"{int(row['Failed Supports'])} breaks")
+                                     f"Median: {row['Median Days']:.1f}d")
 
                     st.dataframe(data.reset_index(drop=True), width='stretch', hide_index=True)
 
