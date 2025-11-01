@@ -23,7 +23,6 @@ warnings.filterwarnings('ignore', message='The keyword arguments have been depre
 # Configuration - paths relative to this script file
 SCRIPT_DIR = Path(__file__).parent.resolve()
 DATA_FILE = SCRIPT_DIR / '../../price_data_filtered.parquet'
-H001_RESULTS_DIR = SCRIPT_DIR
 
 # Page config
 st.set_page_config(page_title="Support Level Analysis", layout="wide")
@@ -56,32 +55,6 @@ def load_all_price_data():
         st.error(f"❌ Error loading data: {e}")
         raise
 
-@st.cache_data
-def load_results_for_period(period_name):
-    """Load detailed results for a specific period with memory optimization"""
-    file = f'{period_name.lower().replace(" ", "_").replace("-", "_")}_detailed_results.parquet'
-    filepath = Path(H001_RESULTS_DIR) / file
-
-    if not filepath.exists():
-        return None
-
-    try:
-        # Load with only essential columns to reduce memory usage
-        # This is much faster than loading all columns
-        cols_to_load = [
-            'stock', 'support_date', 'support_level',
-            'wait_days', 'success', 'days_to_break', 'break_pct',
-            'expiry_days'
-        ]
-
-        # Try to load only the columns we need
-        df = pd.read_parquet(str(filepath), columns=cols_to_load)
-        return df
-    except Exception as e:
-        # If loading fails (timeout, memory), return None
-        # The app will still work without the H001 analysis
-        print(f"Warning: Could not load H001 results for {period_name}: {str(e)[:100]}")
-        return None
 
 def calculate_rolling_low(stock_data, period_days):
     """Calculate rolling low using calendar days, not trading days"""
@@ -167,406 +140,6 @@ def analyze_support_breaks(stock_data):
 
     return breaks, stats
 
-def calculate_stock_success_rates(period_name):
-    """Calculate success rates for all stocks in a given period
-
-    Note: Success rate is calculated PER OPTION CONTRACT TEST, not per unique support.
-    This is correct because we're testing different expiry periods on the same support.
-    """
-    results = load_results_for_period(period_name)
-
-    if results is None or len(results) == 0:
-        return None
-
-    # Convert to datetime
-    results['support_date'] = pd.to_datetime(results['support_date'])
-
-    # Get only immediate supports (wait_days == 0)
-    immediate_supports = results[results['wait_days'] == 0].copy()
-
-    if len(immediate_supports) == 0:
-        return None
-
-    # Calculate success rate per stock
-    stock_stats = []
-
-    for stock in immediate_supports['stock'].unique():
-        stock_results = immediate_supports[immediate_supports['stock'] == stock]
-
-        # Count successes and failures across all option tests
-        successful = (stock_results['success'] == True).sum()
-        failed = (stock_results['success'] == False).sum()
-        total = successful + failed
-
-        if total > 0:
-            success_rate = (successful / total) * 100
-
-            # Count unique support levels tested
-            unique_supports = stock_results.groupby(
-                stock_results['support_level'].astype(str) + '_' +
-                stock_results['support_date'].dt.strftime('%Y-%m')
-            ).size()
-
-            stock_stats.append({
-                'Stock': stock,
-                'Option Tests': total,
-                'Successful': successful,
-                'Failed': failed,
-                'Success Rate %': round(success_rate, 1),
-                'Unique Supports': len(unique_supports)
-            })
-
-    if stock_stats:
-        df_stats = pd.DataFrame(stock_stats)
-        df_stats = df_stats.sort_values('Success Rate %', ascending=False)
-        return df_stats
-
-    return None
-
-
-def calculate_stock_resilience(period_name):
-    """Calculate average days to break support for all stocks in a given period
-
-    This uses UNIQUE support levels only (deduplicates consecutive days with same support).
-    For each unique support, we calculate how long it lasted before breaking.
-
-    Note: 'days_to_break' represents calendar days, not market/trading days
-    """
-    results = load_results_for_period(period_name)
-
-    if results is None or len(results) == 0:
-        return None
-
-    # Convert to datetime
-    results['support_date'] = pd.to_datetime(results['support_date'])
-
-    # Get only immediate supports (wait_days == 0)
-    immediate_supports = results[results['wait_days'] == 0].copy()
-
-    if len(immediate_supports) == 0:
-        return None
-
-    # Calculate resilience (days to break) per stock using UNIQUE supports
-    stock_stats = []
-
-    for stock in immediate_supports['stock'].unique():
-        stock_results = immediate_supports[immediate_supports['stock'] == stock].copy()
-
-        # Get failed supports with days to break
-        failed_results = stock_results[
-            (stock_results['success'] == False) &
-            (stock_results['days_to_break'].notna())
-        ].copy()
-
-        if len(failed_results) > 0:
-            # For each unique support level, find the maximum days_to_break
-            # (which represents the first identification of that support)
-            failed_results['support_key'] = (
-                failed_results['support_level'].astype(str) + '_' +
-                failed_results['support_date'].dt.strftime('%Y-%m')
-            )
-
-            # Group by support level and take the max days_to_break for each unique support
-            unique_supports = failed_results.groupby('support_key').agg({
-                'days_to_break': 'max',  # Max = earliest identification
-                'support_level': 'first'
-            }).reset_index()
-
-            avg_days_to_break = unique_supports['days_to_break'].mean()
-            total_unique_failures = len(unique_supports)
-
-            stock_stats.append({
-                'Stock': stock,
-                'Avg Days to Break': round(avg_days_to_break, 1),
-                'Unique Breaks': total_unique_failures,
-                'Median Days': round(unique_supports['days_to_break'].median(), 1)
-            })
-
-    if stock_stats:
-        df_stats = pd.DataFrame(stock_stats)
-        # Sort by average days to break (higher is better - takes longer to break)
-        df_stats = df_stats.sort_values('Avg Days to Break', ascending=False)
-        return df_stats
-
-    return None
-
-
-def calculate_support_frequency(period_name):
-    """Calculate how often each stock creates new support levels (support identification frequency)"""
-    results = load_results_for_period(period_name)
-
-    if results is None or len(results) == 0:
-        return None
-
-    results['support_date'] = pd.to_datetime(results['support_date'])
-    immediate_supports = results[results['wait_days'] == 0].copy()
-
-    if len(immediate_supports) == 0:
-        return None
-
-    stock_stats = []
-
-    for stock in immediate_supports['stock'].unique():
-        stock_results = immediate_supports[immediate_supports['stock'] == stock]
-        total_supports = len(stock_results)
-        unique_support_dates = stock_results['support_date'].nunique()
-
-        # Frequency = how many supports per trading day on average
-        date_range = (stock_results['support_date'].max() - stock_results['support_date'].min()).days
-        supports_per_trading_day = (total_supports / max(date_range, 1)) * 252  # 252 trading days/year
-
-        stock_stats.append({
-            'Stock': stock,
-            'Total Supports': total_supports,
-            'Unique Dates': unique_support_dates,
-            'Supports/Year': round(supports_per_trading_day, 1)
-        })
-
-    if stock_stats:
-        df_stats = pd.DataFrame(stock_stats)
-        df_stats = df_stats.sort_values('Supports/Year', ascending=False)
-        return df_stats
-
-    return None
-
-
-def calculate_support_consistency(period_name):
-    """Calculate consistency of support breaks (lower stddev = more predictable)"""
-    results = load_results_for_period(period_name)
-
-    if results is None or len(results) == 0:
-        return None
-
-    results['support_date'] = pd.to_datetime(results['support_date'])
-    immediate_supports = results[results['wait_days'] == 0].copy()
-
-    if len(immediate_supports) == 0:
-        return None
-
-    stock_stats = []
-
-    for stock in immediate_supports['stock'].unique():
-        stock_results = immediate_supports[immediate_supports['stock'] == stock]
-
-        # Get failed supports with days to break
-        failed_results = stock_results[
-            (stock_results['success'] == False) &
-            (stock_results['days_to_break'].notna())
-        ]
-
-        if len(failed_results) > 3:  # Need at least 4 data points for meaningful stddev
-            days_to_break = failed_results['days_to_break'].values
-            consistency = round(days_to_break.std(), 1)
-
-            stock_stats.append({
-                'Stock': stock,
-                'Stddev Days': consistency,
-                'Mean Days': round(days_to_break.mean(), 1),
-                'Breaks Analyzed': len(failed_results)
-            })
-
-    if stock_stats:
-        df_stats = pd.DataFrame(stock_stats)
-        # Sort by consistency (lower stddev = more consistent/predictable)
-        df_stats = df_stats.sort_values('Stddev Days', ascending=True)
-        return df_stats
-
-    return None
-
-
-def calculate_downside_risk(period_name):
-    """Calculate average downside when support breaks (how far below support price goes)"""
-    results = load_results_for_period(period_name)
-
-    if results is None or len(results) == 0:
-        return None
-
-    # Check if break_pct column exists
-    if 'break_pct' not in results.columns:
-        return None
-
-    results['support_date'] = pd.to_datetime(results['support_date'])
-    immediate_supports = results[results['wait_days'] == 0].copy()
-
-    if len(immediate_supports) == 0:
-        return None
-
-    stock_stats = []
-
-    for stock in immediate_supports['stock'].unique():
-        stock_results = immediate_supports[immediate_supports['stock'] == stock].copy()
-
-        # Get failed supports with break percentage
-        # break_pct is negative when price goes below support
-        try:
-            failed_results = stock_results.loc[
-                (stock_results['success'] == False) &
-                (stock_results['break_pct'].notna())
-            ]
-
-            if len(failed_results) > 0:
-                # Convert to series to avoid issues
-                break_pcts = pd.to_numeric(failed_results['break_pct'], errors='coerce')
-                break_pcts = break_pcts.dropna()
-
-                if len(break_pcts) > 0:
-                    # break_pct is already in decimal format (e.g., -0.087796 = -8.78%)
-                    # Keep as negative (already negative, just multiply by 100 for percentage)
-                    avg_downside = break_pcts.mean() * 100  # Negative percentage
-                    max_downside = break_pcts.min() * 100   # Worst case (most negative)
-
-                    stock_stats.append({
-                        'Stock': stock,
-                        'Avg Downside %': round(avg_downside, 2),
-                        'Max Downside %': round(max_downside, 2),
-                        'Breaks Analyzed': len(break_pcts)
-                    })
-        except KeyError:
-            # Skip if break_pct column is missing for this stock
-            continue
-
-    if stock_stats:
-        df_stats = pd.DataFrame(stock_stats)
-        # Sort by average downside (lower is better - less downside risk)
-        df_stats = df_stats.sort_values('Avg Downside %', ascending=True)
-        return df_stats
-
-    return None
-
-
-def calculate_expiry_effectiveness(period_name):
-    """Calculate which option expiry periods work best for each stock"""
-    results = load_results_for_period(period_name)
-
-    if results is None or len(results) == 0:
-        return None
-
-    results['support_date'] = pd.to_datetime(results['support_date'])
-    immediate_supports = results[results['wait_days'] == 0].copy()
-
-    if len(immediate_supports) == 0:
-        return None
-
-    stock_stats = []
-
-    for stock in immediate_supports['stock'].unique():
-        stock_results = immediate_supports[immediate_supports['stock'] == stock]
-
-        # Calculate success rate by expiry period
-        expiry_stats = {}
-        for expiry in [7, 14, 21, 30, 45]:
-            expiry_data = stock_results[stock_results['expiry_days'] == expiry]
-            if len(expiry_data) > 0:
-                success_rate = (expiry_data['success'] == True).sum() / len(expiry_data) * 100
-                expiry_stats[f'{expiry}d'] = round(success_rate, 1)
-
-        if expiry_stats:
-            best_expiry = max(expiry_stats, key=expiry_stats.get)
-            stock_stats.append({
-                'Stock': stock,
-                'Best Expiry': best_expiry,
-                'Best Rate %': expiry_stats[best_expiry],
-                **expiry_stats
-            })
-
-    if stock_stats:
-        df_stats = pd.DataFrame(stock_stats)
-        df_stats = df_stats.sort_values('Best Rate %', ascending=False)
-        return df_stats
-
-    return None
-
-
-def calculate_wait_time_effectiveness(period_name):
-    """Calculate if waiting after support identification improves success rates"""
-    results = load_results_for_period(period_name)
-
-    if results is None or len(results) == 0:
-        return None
-
-    results['support_date'] = pd.to_datetime(results['support_date'])
-    immediate_supports = results[results['wait_days'] == 0].copy()
-
-    if len(immediate_supports) == 0:
-        return None
-
-    stock_stats = []
-
-    for stock in immediate_supports['stock'].unique():
-        all_stock_results = results[results['stock'] == stock]
-
-        # Calculate success rate for wait_days=0 vs >0
-        wait_zero = all_stock_results[all_stock_results['wait_days'] == 0]
-        wait_positive = all_stock_results[all_stock_results['wait_days'] > 0]
-
-        if len(wait_zero) > 0 and len(wait_positive) > 0:
-            rate_zero = (wait_zero['success'] == True).sum() / len(wait_zero) * 100
-            rate_positive = (wait_positive['success'] == True).sum() / len(wait_positive) * 100
-            improvement = rate_positive - rate_zero
-
-            stock_stats.append({
-                'Stock': stock,
-                'Immediate %': round(rate_zero, 1),
-                'After Wait %': round(rate_positive, 1),
-                'Improvement %': round(improvement, 1)
-            })
-
-    if stock_stats:
-        df_stats = pd.DataFrame(stock_stats)
-        df_stats = df_stats.sort_values('Improvement %', ascending=False)
-        return df_stats
-
-    return None
-
-
-def calculate_temporal_patterns(period_name):
-    """Calculate seasonal patterns - which months have best support performance"""
-    results = load_results_for_period(period_name)
-
-    if results is None or len(results) == 0:
-        return None
-
-    results['support_date'] = pd.to_datetime(results['support_date'])
-    immediate_supports = results[results['wait_days'] == 0].copy()
-
-    if len(immediate_supports) == 0:
-        return None
-
-    stock_stats = []
-
-    for stock in immediate_supports['stock'].unique():
-        stock_results = immediate_supports[immediate_supports['stock'] == stock].copy()
-        stock_results['month'] = stock_results['support_date'].dt.month
-
-        # Calculate success rate by month
-        month_stats = {}
-        month_names = {1: 'Jan', 2: 'Feb', 3: 'Mar', 4: 'Apr', 5: 'May', 6: 'Jun',
-                      7: 'Jul', 8: 'Aug', 9: 'Sep', 10: 'Oct', 11: 'Nov', 12: 'Dec'}
-
-        for month in range(1, 13):
-            month_data = stock_results[stock_results['month'] == month]
-            if len(month_data) > 0:
-                success_rate = (month_data['success'] == True).sum() / len(month_data) * 100
-                month_stats[month_names[month]] = round(success_rate, 1)
-
-        if month_stats:
-            best_month = max(month_stats, key=month_stats.get)
-            worst_month = min(month_stats, key=month_stats.get)
-
-            stock_stats.append({
-                'Stock': stock,
-                'Best Month': best_month,
-                'Best Rate %': month_stats[best_month],
-                'Worst Month': worst_month,
-                'Worst Rate %': month_stats[worst_month]
-            })
-
-    if stock_stats:
-        df_stats = pd.DataFrame(stock_stats)
-        df_stats = df_stats.sort_values('Best Rate %', ascending=False)
-        return df_stats
-
-    return None
 
 
 def main():
@@ -824,175 +397,113 @@ def main():
     )
 
     # ============================================================================
-    # MULTI-STOCK COMPARISON STATISTICS
+    # MULTI-STOCK COMPARISON - PURE HISTORICAL FACTS
     # ============================================================================
     st.write("---")
-    st.header("📊 Multi-Stock Statistics")
-    st.write(f"Comparing all stocks for **{period_name}** rolling low period")
+    st.header("📊 Multi-Stock Comparison")
+    st.write(f"Historical support level statistics for all stocks - **{period_name}** rolling low period")
+    st.info("ℹ️ These statistics show pure historical facts from price data - no option assumptions or strategy analysis")
 
-    # Try to load H001 results for the selected period
-    try:
-        with st.spinner("Loading multi-stock statistics..."):
-            # Create tabs for different statistics
-            tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-                "🎯 Success Rates",
-                "⏱️ Support Resilience",
-                "📉 Downside Risk",
-                "🔄 Support Frequency",
-                "📊 Consistency",
-                "⚙️ Strategy Optimization"
-            ])
+    # Calculate statistics directly from the displayed data (no H001 results needed)
+    all_stocks_stats = []
 
-            with tab1:
-                st.subheader("Success Rates by Stock")
-                st.write("**How often do support levels hold?**")
-                st.write("Higher success rate = more reliable support levels for put option writing")
+    for comp_stock in sorted(df['Stock'].unique()):
+        comp_stock_data = df[df['Stock'] == comp_stock].copy()
 
-                success_stats = calculate_stock_success_rates(period_name)
-                if success_stats is not None and len(success_stats) > 0:
-                    st.dataframe(success_stats, width='stretch', hide_index=True)
+        # Need enough data to calculate rolling low
+        if len(comp_stock_data) < period_days:
+            continue
 
-                    # Visual chart
-                    fig = px.bar(
-                        success_stats.head(20),
-                        x='Stock',
-                        y='Success Rate %',
-                        title=f'Top 20 Stocks by Success Rate - {period_name}',
-                        color='Success Rate %',
-                        color_continuous_scale='RdYlGn',
-                        hover_data=['Option Tests', 'Unique Supports']
-                    )
-                    fig.update_layout(xaxis_tickangle=-45, height=500)
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info(f"No H001 results available for {period_name}")
+        # Calculate rolling low
+        comp_stock_data_with_low = calculate_rolling_low(comp_stock_data, period_days)
 
-            with tab2:
-                st.subheader("Support Resilience (Days to Break)")
-                st.write("**How long do support levels last before breaking?**")
-                st.write("Higher = support takes longer to break (more time for option to expire safely)")
+        # Analyze breaks
+        breaks, stats = analyze_support_breaks(comp_stock_data_with_low)
 
-                resilience_stats = calculate_stock_resilience(period_name)
-                if resilience_stats is not None and len(resilience_stats) > 0:
-                    st.dataframe(resilience_stats, width='stretch', hide_index=True)
+        if stats is not None and stats['total_breaks'] > 0:
+            all_stocks_stats.append({
+                'Stock': comp_stock,
+                'Total Breaks': stats['total_breaks'],
+                'Avg Days Between': round(stats['avg_days_between'], 1) if stats['avg_days_between'] else None,
+                'Median Days Between': round(stats['median_days_between'], 1) if stats['median_days_between'] else None,
+                'Trading Days per Break': round(stats['trading_days_per_break'], 1) if stats['trading_days_per_break'] else None,
+                'Stability %': round(stats['stability_pct'], 1),
+                'Avg Break %': round(stats['avg_drop_pct'], 2),
+                'Max Break %': round(stats['max_drop_pct'], 2),
+                'Days Since Last': stats['days_since_last_break']
+            })
 
-                    # Visual chart
-                    fig = px.bar(
-                        resilience_stats.head(20),
-                        x='Stock',
-                        y='Avg Days to Break',
-                        title=f'Top 20 Most Resilient Stocks - {period_name}',
-                        color='Avg Days to Break',
-                        color_continuous_scale='Blues',
-                        hover_data=['Unique Breaks', 'Median Days']
-                    )
-                    fig.update_layout(xaxis_tickangle=-45, height=500)
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info(f"No H001 results available for {period_name}")
+    if all_stocks_stats:
+        df_all_stocks = pd.DataFrame(all_stocks_stats)
 
-            with tab3:
-                st.subheader("Downside Risk When Support Breaks")
-                st.write("**When support breaks, how far below does the price go?**")
-                st.write("Lower downside % = less risk if you get assigned on the put option")
+        # Create tabs for different views
+        tab1, tab2, tab3 = st.tabs([
+            "🔒 Most Stable Supports",
+            "⏱️ Time Between Breaks",
+            "📉 Break Magnitude"
+        ])
 
-                risk_stats = calculate_downside_risk(period_name)
-                if risk_stats is not None and len(risk_stats) > 0:
-                    # Sort by average downside (ascending = least risky first)
-                    risk_stats = risk_stats.sort_values('Avg Downside %', ascending=True)
-                    st.dataframe(risk_stats, width='stretch', hide_index=True)
+        with tab1:
+            st.subheader("Stocks with Most Stable Support Levels")
+            st.write("**Stability % = Percentage of trading days where support held (didn't break)**")
 
-                    # Visual chart
-                    fig = px.bar(
-                        risk_stats.head(20),
-                        x='Stock',
-                        y='Avg Downside %',
-                        title=f'Top 20 Lowest Downside Risk Stocks - {period_name}',
-                        color='Avg Downside %',
-                        color_continuous_scale='RdYlGn_r',  # Reverse so green = less negative
-                        hover_data=['Max Downside %', 'Breaks Analyzed']
-                    )
-                    fig.update_layout(xaxis_tickangle=-45, height=500)
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info(f"No H001 results available for {period_name}")
+            stable_df = df_all_stocks.sort_values('Stability %', ascending=False)
+            st.dataframe(stable_df, width='stretch', hide_index=True)
 
-            with tab4:
-                st.subheader("Support Identification Frequency")
-                st.write("**How often do new support levels appear?**")
-                st.write("Higher = more trading opportunities per year")
+            # Visual chart - top 20
+            fig = px.bar(
+                stable_df.head(20),
+                x='Stock',
+                y='Stability %',
+                title=f'Top 20 Most Stable Stocks - {period_name}',
+                color='Stability %',
+                color_continuous_scale='RdYlGn',
+                hover_data=['Total Breaks', 'Trading Days per Break']
+            )
+            fig.update_layout(xaxis_tickangle=-45, height=500)
+            st.plotly_chart(fig, use_container_width=True)
 
-                freq_stats = calculate_support_frequency(period_name)
-                if freq_stats is not None and len(freq_stats) > 0:
-                    st.dataframe(freq_stats, width='stretch', hide_index=True)
+        with tab2:
+            st.subheader("Average Time Between Support Breaks")
+            st.write("**Higher = support levels last longer before breaking**")
 
-                    # Visual chart
-                    fig = px.bar(
-                        freq_stats.head(20),
-                        x='Stock',
-                        y='Supports/Year',
-                        title=f'Top 20 Most Frequent Support Opportunities - {period_name}',
-                        color='Supports/Year',
-                        color_continuous_scale='Viridis',
-                        hover_data=['Total Supports', 'Unique Dates']
-                    )
-                    fig.update_layout(xaxis_tickangle=-45, height=500)
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info(f"No H001 results available for {period_name}")
+            time_df = df_all_stocks[df_all_stocks['Avg Days Between'].notna()].sort_values('Avg Days Between', ascending=False)
+            st.dataframe(time_df, width='stretch', hide_index=True)
 
-            with tab5:
-                st.subheader("Support Break Consistency")
-                st.write("**How predictable are support breaks?**")
-                st.write("Lower standard deviation = more consistent/predictable behavior")
+            # Visual chart - top 20
+            fig = px.bar(
+                time_df.head(20),
+                x='Stock',
+                y='Avg Days Between',
+                title=f'Top 20 Longest Time Between Breaks - {period_name}',
+                color='Avg Days Between',
+                color_continuous_scale='Blues',
+                hover_data=['Median Days Between', 'Total Breaks']
+            )
+            fig.update_layout(xaxis_tickangle=-45, height=500, yaxis_title='Calendar Days')
+            st.plotly_chart(fig, use_container_width=True)
 
-                consistency_stats = calculate_support_consistency(period_name)
-                if consistency_stats is not None and len(consistency_stats) > 0:
-                    st.dataframe(consistency_stats, width='stretch', hide_index=True)
+        with tab3:
+            st.subheader("Support Break Magnitude")
+            st.write("**When support breaks, how much does it drop? (Lower = smaller drops)**")
 
-                    # Visual chart
-                    fig = px.scatter(
-                        consistency_stats,
-                        x='Mean Days',
-                        y='Stddev Days',
-                        text='Stock',
-                        title=f'Support Break Consistency - {period_name}',
-                        color='Stddev Days',
-                        color_continuous_scale='RdYlGn_r',
-                        size='Breaks Analyzed',
-                        hover_data=['Breaks Analyzed']
-                    )
-                    fig.update_traces(textposition='top center')
-                    fig.update_layout(height=600)
-                    st.plotly_chart(fig, use_container_width=True)
-                else:
-                    st.info(f"No H001 results available for {period_name}")
+            break_df = df_all_stocks.sort_values('Avg Break %', ascending=True)
+            st.dataframe(break_df, width='stretch', hide_index=True)
 
-            with tab6:
-                st.subheader("Strategy Optimization")
-
-                col_opt1, col_opt2 = st.columns(2)
-
-                with col_opt1:
-                    st.write("**Best Option Expiry Periods by Stock**")
-                    expiry_stats = calculate_expiry_effectiveness(period_name)
-                    if expiry_stats is not None and len(expiry_stats) > 0:
-                        st.dataframe(expiry_stats, width='stretch', hide_index=True)
-                    else:
-                        st.info(f"No H001 results available for {period_name}")
-
-                with col_opt2:
-                    st.write("**Wait Time Effectiveness**")
-                    st.write("Does waiting after support identification improve success?")
-                    wait_stats = calculate_wait_time_effectiveness(period_name)
-                    if wait_stats is not None and len(wait_stats) > 0:
-                        st.dataframe(wait_stats, width='stretch', hide_index=True)
-                    else:
-                        st.info(f"No H001 results available for {period_name}")
-
-    except Exception as e:
-        st.error(f"Error loading multi-stock statistics: {str(e)}")
-        st.info("Multi-stock statistics require H001 analysis results to be available")
+            # Visual chart - top 20 smallest breaks
+            fig = px.bar(
+                break_df.head(20),
+                x='Stock',
+                y='Avg Break %',
+                title=f'Top 20 Smallest Average Breaks - {period_name}',
+                color='Avg Break %',
+                color_continuous_scale='RdYlGn_r',
+                hover_data=['Max Break %', 'Total Breaks']
+            )
+            fig.update_layout(xaxis_tickangle=-45, height=500, yaxis_title='Average Break %')
+            st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No support break data available for comparison")
 
 
 if __name__ == '__main__':
