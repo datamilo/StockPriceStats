@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 from datetime import timedelta
 import plotly.graph_objects as go
+import plotly.express as px
 from pathlib import Path
 import warnings
 
@@ -821,6 +822,177 @@ def main():
         width='stretch',
         hide_index=True
     )
+
+    # ============================================================================
+    # MULTI-STOCK COMPARISON STATISTICS
+    # ============================================================================
+    st.write("---")
+    st.header("📊 Multi-Stock Statistics")
+    st.write(f"Comparing all stocks for **{period_name}** rolling low period")
+
+    # Try to load H001 results for the selected period
+    try:
+        with st.spinner("Loading multi-stock statistics..."):
+            # Create tabs for different statistics
+            tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+                "🎯 Success Rates",
+                "⏱️ Support Resilience",
+                "📉 Downside Risk",
+                "🔄 Support Frequency",
+                "📊 Consistency",
+                "⚙️ Strategy Optimization"
+            ])
+
+            with tab1:
+                st.subheader("Success Rates by Stock")
+                st.write("**How often do support levels hold?**")
+                st.write("Higher success rate = more reliable support levels for put option writing")
+
+                success_stats = calculate_stock_success_rates(period_name)
+                if success_stats is not None and len(success_stats) > 0:
+                    st.dataframe(success_stats, width='stretch', hide_index=True)
+
+                    # Visual chart
+                    fig = px.bar(
+                        success_stats.head(20),
+                        x='Stock',
+                        y='Success Rate %',
+                        title=f'Top 20 Stocks by Success Rate - {period_name}',
+                        color='Success Rate %',
+                        color_continuous_scale='RdYlGn',
+                        hover_data=['Option Tests', 'Unique Supports']
+                    )
+                    fig.update_layout(xaxis_tickangle=-45, height=500)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info(f"No H001 results available for {period_name}")
+
+            with tab2:
+                st.subheader("Support Resilience (Days to Break)")
+                st.write("**How long do support levels last before breaking?**")
+                st.write("Higher = support takes longer to break (more time for option to expire safely)")
+
+                resilience_stats = calculate_stock_resilience(period_name)
+                if resilience_stats is not None and len(resilience_stats) > 0:
+                    st.dataframe(resilience_stats, width='stretch', hide_index=True)
+
+                    # Visual chart
+                    fig = px.bar(
+                        resilience_stats.head(20),
+                        x='Stock',
+                        y='Avg Days to Break',
+                        title=f'Top 20 Most Resilient Stocks - {period_name}',
+                        color='Avg Days to Break',
+                        color_continuous_scale='Blues',
+                        hover_data=['Unique Breaks', 'Median Days']
+                    )
+                    fig.update_layout(xaxis_tickangle=-45, height=500)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info(f"No H001 results available for {period_name}")
+
+            with tab3:
+                st.subheader("Downside Risk When Support Breaks")
+                st.write("**When support breaks, how far below does the price go?**")
+                st.write("Lower downside % = less risk if you get assigned on the put option")
+
+                risk_stats = calculate_downside_risk(period_name)
+                if risk_stats is not None and len(risk_stats) > 0:
+                    # Sort by average downside (ascending = least risky first)
+                    risk_stats = risk_stats.sort_values('Avg Downside %', ascending=True)
+                    st.dataframe(risk_stats, width='stretch', hide_index=True)
+
+                    # Visual chart
+                    fig = px.bar(
+                        risk_stats.head(20),
+                        x='Stock',
+                        y='Avg Downside %',
+                        title=f'Top 20 Lowest Downside Risk Stocks - {period_name}',
+                        color='Avg Downside %',
+                        color_continuous_scale='RdYlGn_r',  # Reverse so green = less negative
+                        hover_data=['Max Downside %', 'Breaks Analyzed']
+                    )
+                    fig.update_layout(xaxis_tickangle=-45, height=500)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info(f"No H001 results available for {period_name}")
+
+            with tab4:
+                st.subheader("Support Identification Frequency")
+                st.write("**How often do new support levels appear?**")
+                st.write("Higher = more trading opportunities per year")
+
+                freq_stats = calculate_support_frequency(period_name)
+                if freq_stats is not None and len(freq_stats) > 0:
+                    st.dataframe(freq_stats, width='stretch', hide_index=True)
+
+                    # Visual chart
+                    fig = px.bar(
+                        freq_stats.head(20),
+                        x='Stock',
+                        y='Supports/Year',
+                        title=f'Top 20 Most Frequent Support Opportunities - {period_name}',
+                        color='Supports/Year',
+                        color_continuous_scale='Viridis',
+                        hover_data=['Total Supports', 'Unique Dates']
+                    )
+                    fig.update_layout(xaxis_tickangle=-45, height=500)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info(f"No H001 results available for {period_name}")
+
+            with tab5:
+                st.subheader("Support Break Consistency")
+                st.write("**How predictable are support breaks?**")
+                st.write("Lower standard deviation = more consistent/predictable behavior")
+
+                consistency_stats = calculate_support_consistency(period_name)
+                if consistency_stats is not None and len(consistency_stats) > 0:
+                    st.dataframe(consistency_stats, width='stretch', hide_index=True)
+
+                    # Visual chart
+                    fig = px.scatter(
+                        consistency_stats,
+                        x='Mean Days',
+                        y='Stddev Days',
+                        text='Stock',
+                        title=f'Support Break Consistency - {period_name}',
+                        color='Stddev Days',
+                        color_continuous_scale='RdYlGn_r',
+                        size='Breaks Analyzed',
+                        hover_data=['Breaks Analyzed']
+                    )
+                    fig.update_traces(textposition='top center')
+                    fig.update_layout(height=600)
+                    st.plotly_chart(fig, use_container_width=True)
+                else:
+                    st.info(f"No H001 results available for {period_name}")
+
+            with tab6:
+                st.subheader("Strategy Optimization")
+
+                col_opt1, col_opt2 = st.columns(2)
+
+                with col_opt1:
+                    st.write("**Best Option Expiry Periods by Stock**")
+                    expiry_stats = calculate_expiry_effectiveness(period_name)
+                    if expiry_stats is not None and len(expiry_stats) > 0:
+                        st.dataframe(expiry_stats, width='stretch', hide_index=True)
+                    else:
+                        st.info(f"No H001 results available for {period_name}")
+
+                with col_opt2:
+                    st.write("**Wait Time Effectiveness**")
+                    st.write("Does waiting after support identification improve success?")
+                    wait_stats = calculate_wait_time_effectiveness(period_name)
+                    if wait_stats is not None and len(wait_stats) > 0:
+                        st.dataframe(wait_stats, width='stretch', hide_index=True)
+                    else:
+                        st.info(f"No H001 results available for {period_name}")
+
+    except Exception as e:
+        st.error(f"Error loading multi-stock statistics: {str(e)}")
+        st.info("Multi-stock statistics require H001 analysis results to be available")
 
 
 if __name__ == '__main__':
