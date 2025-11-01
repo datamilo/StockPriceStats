@@ -141,6 +141,36 @@ def analyze_support_breaks(stock_data):
     return breaks, stats
 
 
+@st.cache_data(show_spinner="Calculating statistics for all stocks... (this runs once, then cached)")
+def calculate_all_stocks_statistics(period_days):
+    """Calculate statistics for all stocks - cached for performance"""
+    df = load_all_price_data()
+    all_stocks_stats = []
+
+    for stock in sorted(df['Stock'].unique()):
+        stock_data = df[df['Stock'] == stock].copy()
+
+        if len(stock_data) < period_days:
+            continue
+
+        stock_data_with_low = calculate_rolling_low(stock_data, period_days)
+        breaks, stats = analyze_support_breaks(stock_data_with_low)
+
+        if stats is not None and stats['total_breaks'] > 0:
+            all_stocks_stats.append({
+                'Stock': stock,
+                'Total Breaks': stats['total_breaks'],
+                'Avg Days Between': round(stats['avg_days_between'], 1) if stats['avg_days_between'] else None,
+                'Median Days Between': round(stats['median_days_between'], 1) if stats['median_days_between'] else None,
+                'Trading Days per Break': round(stats['trading_days_per_break'], 1) if stats['trading_days_per_break'] else None,
+                'Stability %': round(stats['stability_pct'], 1),
+                'Avg Break %': round(stats['avg_drop_pct'], 2),
+                'Max Break %': round(stats['max_drop_pct'], 2),
+                'Days Since Last': stats['days_since_last_break']
+            })
+
+    return pd.DataFrame(all_stocks_stats) if all_stocks_stats else None
+
 
 def main():
     """Main app logic"""
@@ -156,10 +186,103 @@ def main():
     with st.spinner("Loading price data..."):
         df = load_all_price_data()
 
-    # Single-stock analysis
-    # Sidebar controls for Stock Analysis
+    # Page selector
+    st.sidebar.header("📄 Page")
+    page = st.sidebar.radio(
+        "View:",
+        ["Single Stock Analysis", "📊 Top Lists"],
+        help="Switch between detailed analysis and multi-stock rankings"
+    )
+
+    # Configuration section
     st.sidebar.header("📊 Configuration")
 
+    # Period selector (shared by both pages)
+    period_days = st.sidebar.radio(
+        "Rolling Low Period:",
+        options=[30, 90, 180, 270, 365],
+        format_func=lambda x: {30: "1-Month", 90: "3-Month", 180: "6-Month", 270: "9-Month", 365: "1-Year"}[x]
+    )
+    period_name = {30: "1-Month", 90: "3-Month", 180: "6-Month", 270: "9-Month", 365: "1-Year"}[period_days]
+
+    # ============================================================================
+    # PAGE: TOP LISTS
+    # ============================================================================
+    if page == "📊 Top Lists":
+        st.header(f"📊 Top Lists - {period_name} Rolling Low")
+        st.info("Rankings based on pure historical support level behavior - calculated once and cached for speed")
+
+        # Calculate all stock statistics (cached)
+        df_all_stocks = calculate_all_stocks_statistics(period_days)
+
+        if df_all_stocks is not None and len(df_all_stocks) > 0:
+            # Create tabs
+            tab1, tab2, tab3 = st.tabs([
+                "🔒 Most Stable",
+                "⏱️ Longest Between Breaks",
+                "📉 Smallest Breaks"
+            ])
+
+            with tab1:
+                st.subheader("Most Stable Support Levels")
+                st.write("**Stocks with highest stability % (fewest breaks relative to trading days)**")
+
+                stable_df = df_all_stocks.sort_values('Stability %', ascending=False)
+                st.dataframe(stable_df, width='stretch', hide_index=True)
+
+                fig = px.bar(
+                    stable_df.head(15),
+                    x='Stock',
+                    y='Stability %',
+                    title=f'Top 15 Most Stable - {period_name}',
+                    color='Stability %',
+                    color_continuous_scale='RdYlGn'
+                )
+                fig.update_layout(xaxis_tickangle=-45, height=500)
+                st.plotly_chart(fig, use_container_width=True)
+
+            with tab2:
+                st.subheader("Longest Time Between Support Breaks")
+                st.write("**Stocks where support levels last the longest before breaking**")
+
+                time_df = df_all_stocks[df_all_stocks['Avg Days Between'].notna()].sort_values('Avg Days Between', ascending=False)
+                st.dataframe(time_df, width='stretch', hide_index=True)
+
+                fig = px.bar(
+                    time_df.head(15),
+                    x='Stock',
+                    y='Avg Days Between',
+                    title=f'Top 15 Longest Duration - {period_name}',
+                    color='Avg Days Between',
+                    color_continuous_scale='Blues'
+                )
+                fig.update_layout(xaxis_tickangle=-45, height=500, yaxis_title='Calendar Days')
+                st.plotly_chart(fig, use_container_width=True)
+
+            with tab3:
+                st.subheader("Smallest Support Breaks")
+                st.write("**Stocks with smallest average % drops when support breaks**")
+
+                break_df = df_all_stocks.sort_values('Avg Break %', ascending=True)
+                st.dataframe(break_df, width='stretch', hide_index=True)
+
+                fig = px.bar(
+                    break_df.head(15),
+                    x='Stock',
+                    y='Avg Break %',
+                    title=f'Top 15 Smallest Breaks - {period_name}',
+                    color='Avg Break %',
+                    color_continuous_scale='RdYlGn_r'
+                )
+                fig.update_layout(xaxis_tickangle=-45, height=500, yaxis_title='Average Break %')
+                st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.warning("No statistics available for this period")
+        return
+
+    # ============================================================================
+    # PAGE: SINGLE STOCK ANALYSIS
+    # ============================================================================
     # Stock selector
     stocks = sorted(df['Stock'].unique())
     selected_stock = st.sidebar.selectbox("Select Stock:", stocks)
@@ -170,13 +293,6 @@ def main():
     max_date = stock_data['Date'].max()
 
     st.sidebar.write(f"**Data available:** {min_date.date()} to {max_date.date()}")
-
-    # Period selector
-    period_days = st.sidebar.radio(
-        "Rolling Low Period:",
-        options=[30, 90, 180, 270, 365],
-        format_func=lambda x: {30: "1-Month", 90: "3-Month", 180: "6-Month", 270: "9-Month", 365: "1-Year"}[x]
-    )
 
     # Calculate rolling low on FULL dataset FIRST
     # This is the TRUE rolling low for each date - it never changes
@@ -221,26 +337,6 @@ def main():
     if len(stock_data) == 0:
         st.error("No data available for selected date range")
         return
-
-    # Load H001 results for this stock and period
-    period_name = {30: "1-Month", 90: "3-Month", 180: "6-Month", 270: "9-Month", 365: "1-Year"}[period_days]
-
-    try:
-        results = load_results_for_period(period_name)
-
-        if results is not None:
-            # Convert support_date to datetime if it's not already
-            results['support_date'] = pd.to_datetime(results['support_date'])
-
-            # Filter results by stock AND by selected date range
-            results = results[
-                (results['stock'] == selected_stock) &
-                (results['support_date'] >= pd.to_datetime(start_date)) &
-                (results['support_date'] <= pd.to_datetime(end_date))
-            ].copy()
-    except Exception as e:
-        print(f"Error processing H001 results: {str(e)[:100]}")
-        results = None
 
     # Display info
     st.subheader(f"{selected_stock}")
