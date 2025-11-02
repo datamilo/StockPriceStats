@@ -236,7 +236,10 @@ def main():
                 st.write("**Stocks with highest stability % (fewest breaks relative to trading days)**")
 
                 stable_df = df_all_stocks.sort_values('Stability %', ascending=False)
-                st.dataframe(stable_df, width='stretch', hide_index=True)
+
+                # Hide Median Days Between column (not useful - almost all stocks have same value)
+                display_cols = [col for col in stable_df.columns if col != 'Median Days Between']
+                st.dataframe(stable_df[display_cols], width='stretch', hide_index=True)
 
                 fig = px.bar(
                     stable_df.head(15),
@@ -254,7 +257,10 @@ def main():
                 st.write("**Stocks where support levels last the longest before breaking**")
 
                 time_df = df_all_stocks[df_all_stocks['Avg Days Between'].notna()].sort_values('Avg Days Between', ascending=False)
-                st.dataframe(time_df, width='stretch', hide_index=True)
+
+                # Hide Median Days Between column (not useful - almost all stocks have same value)
+                display_cols = [col for col in time_df.columns if col != 'Median Days Between']
+                st.dataframe(time_df[display_cols], width='stretch', hide_index=True)
 
                 fig = px.bar(
                     time_df.head(15),
@@ -272,7 +278,10 @@ def main():
                 st.write("**Stocks with smallest average % drops when support breaks**")
 
                 break_df = df_all_stocks.sort_values('Avg Break %', ascending=True)
-                st.dataframe(break_df, width='stretch', hide_index=True)
+
+                # Hide Median Days Between column (not useful - almost all stocks have same value)
+                display_cols = [col for col in break_df.columns if col != 'Median Days Between']
+                st.dataframe(break_df[display_cols], width='stretch', hide_index=True)
 
                 fig = px.bar(
                     break_df.head(15),
