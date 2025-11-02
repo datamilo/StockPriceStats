@@ -11,6 +11,8 @@ Usage:
 
 import pandas as pd
 import numpy as np
+import subprocess
+import sys
 from pathlib import Path
 from datetime import timedelta
 
@@ -121,8 +123,16 @@ def calculate_statistics_for_period(df, period_days, period_name):
         stats = analyze_support_breaks(stock_data_with_low)
 
         if stats is not None and stats['total_breaks'] > 0:
+            # Calculate data range
+            first_date = stock_data['Date'].min()
+            last_date = stock_data['Date'].max()
+            years_of_data = (last_date - first_date).days / 365.25
+
             all_stocks_stats.append({
                 'Stock': stock,
+                'First Date': first_date.strftime('%Y-%m-%d'),
+                'Last Date': last_date.strftime('%Y-%m-%d'),
+                'Years of Data': round(years_of_data, 1),
                 'Total Breaks': stats['total_breaks'],
                 'Avg Days Between': round(stats['avg_days_between'], 1) if stats['avg_days_between'] else None,
                 'Median Days Between': round(stats['median_days_between'], 1) if stats['median_days_between'] else None,
@@ -142,6 +152,95 @@ def calculate_statistics_for_period(df, period_days, period_name):
         print(f"  Saved to: {output_file}")
         return df_stats
     return None
+
+
+def push_to_github():
+    """Commit and push updated top lists to GitHub"""
+    print("\n" + "=" * 80)
+    print("SYNCING TO GITHUB")
+    print("=" * 80)
+
+    try:
+        PROJECT_ROOT = SCRIPT_DIR / '../..'
+
+        # Stage top lists files
+        files_to_stage = [
+            'hypotheses/h001_multi_period_low_support/top_lists/1_month_top_lists.parquet',
+            'hypotheses/h001_multi_period_low_support/top_lists/3_month_top_lists.parquet',
+            'hypotheses/h001_multi_period_low_support/top_lists/6_month_top_lists.parquet',
+            'hypotheses/h001_multi_period_low_support/top_lists/9_month_top_lists.parquet',
+            'hypotheses/h001_multi_period_low_support/top_lists/1_year_top_lists.parquet',
+            'hypotheses/h001_multi_period_low_support/calculate_top_lists.py',
+            'hypotheses/h001_multi_period_low_support/streamlit_app_lite.py',
+        ]
+
+        print("Staging files for commit...")
+        for file in files_to_stage:
+            file_path = PROJECT_ROOT / file
+            if file_path.exists():
+                subprocess.run(
+                    ['git', 'add', str(file_path)],
+                    cwd=str(PROJECT_ROOT),
+                    check=True,
+                    capture_output=True
+                )
+                print(f"  ✓ Staged {file}")
+
+        # Check if there are changes to commit
+        result = subprocess.run(
+            ['git', 'status', '--porcelain'],
+            cwd=str(PROJECT_ROOT),
+            capture_output=True,
+            text=True,
+            check=True
+        )
+
+        if not result.stdout.strip():
+            print("\n  No changes to commit (top lists already up-to-date)")
+            return True
+
+        # Create commit message
+        commit_msg = """Update top lists with data range tracking for fair comparisons
+
+Added First Date, Last Date, and Years of Data columns to all top lists.
+This allows filtering out stocks with limited historical data (e.g., Autoliv
+with only 1.8 years) to ensure fair comparisons in rankings.
+
+Streamlit app now includes data quality filter (default: 5 years minimum).
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"""
+
+        # Commit
+        print("\nCommitting changes...")
+        subprocess.run(
+            ['git', 'commit', '-m', commit_msg],
+            cwd=str(PROJECT_ROOT),
+            check=True,
+            capture_output=True
+        )
+        print("  ✓ Commit created")
+
+        # Push
+        print("Pushing to GitHub...")
+        subprocess.run(
+            ['git', 'push', 'origin', 'main'],
+            cwd=str(PROJECT_ROOT),
+            check=True,
+            capture_output=True
+        )
+        print("  ✓ Pushed to origin/main")
+
+        return True
+
+    except subprocess.CalledProcessError as e:
+        print(f"\n✗ Git operation failed")
+        print(f"Error: {e.stderr.decode() if e.stderr else 'Unknown error'}")
+        return False
+    except Exception as e:
+        print(f"\n✗ Unexpected error during GitHub sync: {e}")
+        return False
 
 
 def main():
@@ -170,6 +269,21 @@ def main():
     print(f"✓ Files saved to: {OUTPUT_DIR}")
     print("=" * 80)
 
+    # Push to GitHub
+    if not push_to_github():
+        print("\n✗ GitHub sync failed.")
+        print("⚠️  Top lists have been updated locally but NOT pushed to GitHub.")
+        print("Run the following commands manually:")
+        print("  git add hypotheses/h001_multi_period_low_support/top_lists/*.parquet")
+        print("  git commit -m 'Update: Top lists regenerated'")
+        print("  git push origin main")
+        return 1
+
+    print("\n" + "=" * 80)
+    print("✓ ALL UPDATES COMPLETE & SYNCED TO GITHUB!")
+    print("=" * 80)
+    return 0
+
 
 if __name__ == '__main__':
-    main()
+    sys.exit(main())

@@ -203,6 +203,27 @@ def main():
         df_all_stocks = load_top_lists_for_period(period_name)
 
         if df_all_stocks is not None and len(df_all_stocks) > 0:
+            # Add data quality filter
+            if 'Years of Data' in df_all_stocks.columns:
+                st.sidebar.markdown("---")
+                st.sidebar.subheader("Data Quality Filter")
+                min_years = st.sidebar.slider(
+                    "Minimum years of historical data",
+                    min_value=0.0,
+                    max_value=float(df_all_stocks['Years of Data'].max()),
+                    value=5.0,
+                    step=0.5,
+                    help="Filter out stocks with limited historical data to ensure fair comparisons"
+                )
+
+                # Apply filter
+                df_filtered = df_all_stocks[df_all_stocks['Years of Data'] >= min_years].copy()
+                stocks_filtered_count = len(df_all_stocks) - len(df_filtered)
+
+                if stocks_filtered_count > 0:
+                    st.info(f"ℹ️ Showing {len(df_filtered)} stocks with ≥{min_years} years of data (filtered out {stocks_filtered_count} stocks with limited data)")
+
+                df_all_stocks = df_filtered
             # Create tabs
             tab1, tab2, tab3 = st.tabs([
                 "🔒 Most Stable",
