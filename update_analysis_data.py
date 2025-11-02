@@ -31,6 +31,7 @@ PROJECT_ROOT = Path(__file__).parent
 H001_DIR = PROJECT_ROOT / 'hypotheses' / 'h001_multi_period_low_support'
 FILTER_SCRIPT = PROJECT_ROOT / 'filter_relevant_stocks.py'
 INCREMENTAL_SCRIPT = H001_DIR / 'multi_period_low_analysis_incremental.py'
+TOP_LISTS_SCRIPT = H001_DIR / 'calculate_top_lists.py'
 PRICE_DATA_ALL = PROJECT_ROOT / 'price_data_all.parquet'
 
 
@@ -148,6 +149,11 @@ def push_to_github():
             'hypotheses/h001_multi_period_low_support/6_month_detailed_results.parquet',
             'hypotheses/h001_multi_period_low_support/9_month_detailed_results.parquet',
             'hypotheses/h001_multi_period_low_support/1_year_detailed_results.parquet',
+            'hypotheses/h001_multi_period_low_support/top_lists/1_month_top_lists.parquet',
+            'hypotheses/h001_multi_period_low_support/top_lists/3_month_top_lists.parquet',
+            'hypotheses/h001_multi_period_low_support/top_lists/6_month_top_lists.parquet',
+            'hypotheses/h001_multi_period_low_support/top_lists/9_month_top_lists.parquet',
+            'hypotheses/h001_multi_period_low_support/top_lists/1_year_top_lists.parquet',
         ]
 
         print(f"Staging files for commit...")
@@ -251,7 +257,18 @@ def main():
         print("\n✗ Incremental analysis failed.")
         return 1
 
-    # Step 3: Push to GitHub
+    # Step 3: Regenerate top lists
+    if not run_command(
+        "Regenerate top lists for Streamlit app",
+        TOP_LISTS_SCRIPT,
+        working_dir=H001_DIR
+    ):
+        print("\n✗ Top lists regeneration failed.")
+        print("⚠️  H001 data updated but top lists may be stale.")
+        print("Run manually: python hypotheses/h001_multi_period_low_support/calculate_top_lists.py")
+        return 1
+
+    # Step 4: Push to GitHub
     if not push_to_github():
         print("\n✗ GitHub sync failed.")
         print("⚠️  Data has been updated locally but NOT pushed to GitHub.")
@@ -267,12 +284,13 @@ def main():
     print("""
 The following files have been updated and pushed to GitHub:
   ✓ price_data_all.parquet  - Latest price data
-  ✓ price_data_filtered.parquet  - Filtered stock price data (70 stocks)
+  ✓ price_data_filtered.parquet  - Filtered stock price data (68 stocks)
   ✓ 1_month_detailed_results.parquet  - H001 analysis results
   ✓ 3_month_detailed_results.parquet  - H001 analysis results
   ✓ 6_month_detailed_results.parquet  - H001 analysis results
   ✓ 9_month_detailed_results.parquet  - H001 analysis results
   ✓ 1_year_detailed_results.parquet  - H001 analysis results
+  ✓ top_lists/*.parquet (5 files)  - Pre-calculated rankings for Streamlit
 
 The Streamlit app will automatically use the updated data on next refresh.
 GitHub and Streamlit Cloud will auto-deploy the changes.
