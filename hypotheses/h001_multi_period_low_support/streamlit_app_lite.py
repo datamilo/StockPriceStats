@@ -141,6 +141,63 @@ def analyze_support_breaks(stock_data):
     return breaks, stats
 
 
+def analyze_consecutive_breaks(breaks_df, max_gap_days=30):
+    """
+    Identify clusters of consecutive breaks
+
+    A cluster is a group of breaks where each break happens within max_gap_days
+    of the previous break.
+
+    Returns:
+    - clusters: List of cluster dictionaries
+    - cluster_stats: Summary statistics about clusters
+    """
+    if breaks_df is None or len(breaks_df) == 0:
+        return [], {}
+
+    breaks_df = breaks_df.sort_values('Date').reset_index(drop=True)
+
+    # Identify cluster boundaries
+    # A new cluster starts when gap from previous break > max_gap_days
+    breaks_df['days_from_prev'] = breaks_df['Date'].diff().dt.days
+    breaks_df['new_cluster'] = (breaks_df['days_from_prev'].isna()) | (breaks_df['days_from_prev'] > max_gap_days)
+    breaks_df['cluster_id'] = breaks_df['new_cluster'].cumsum()
+
+    # Analyze each cluster
+    clusters = []
+    for cluster_id, cluster_df in breaks_df.groupby('cluster_id'):
+        cluster_df = cluster_df.sort_values('Date')
+
+        cluster_info = {
+            'cluster_id': int(cluster_id),
+            'num_breaks': len(cluster_df),
+            'start_date': cluster_df['Date'].min(),
+            'end_date': cluster_df['Date'].max(),
+            'duration_days': int((cluster_df['Date'].max() - cluster_df['Date'].min()).days),
+            'avg_gap_days': float(cluster_df['days_from_prev'].mean()) if len(cluster_df) > 1 else None,
+            'max_gap_days': float(cluster_df['days_from_prev'].max()) if len(cluster_df) > 1 else None,
+            'min_gap_days': float(cluster_df['days_from_prev'].min()) if len(cluster_df) > 1 else None,
+            'total_drop_pct': float(cluster_df['drop_pct'].sum()),
+            'avg_drop_pct': float(cluster_df['drop_pct'].mean()),
+            'breaks': cluster_df[['Date', 'prev_support', 'new_support', 'drop_pct', 'days_from_prev']].copy()
+        }
+        clusters.append(cluster_info)
+
+    # Calculate cluster statistics
+    cluster_sizes = [c['num_breaks'] for c in clusters]
+    cluster_stats = {
+        'total_clusters': len(clusters),
+        'total_breaks': len(breaks_df),
+        'single_break_clusters': sum(1 for s in cluster_sizes if s == 1),
+        'multi_break_clusters': sum(1 for s in cluster_sizes if s > 1),
+        'avg_breaks_per_cluster': float(np.mean(cluster_sizes)),
+        'max_breaks_in_cluster': int(max(cluster_sizes)),
+        'avg_cluster_duration': float(np.mean([c['duration_days'] for c in clusters if c['num_breaks'] > 1])) if any(c['num_breaks'] > 1 for c in clusters) else None,
+    }
+
+    return clusters, cluster_stats
+
+
 @st.cache_data
 def load_top_lists_for_period(period_name):
     """Load pre-calculated top lists from parquet files"""
@@ -492,6 +549,106 @@ def main():
         breaks_display.columns = ['Date', 'Previous Support', 'New Support', 'Drop %', 'Calendar Days Since Last']
         breaks_display['Date'] = breaks_display['Date'].dt.strftime('%Y-%m-%d')
         st.dataframe(breaks_display, width='stretch', hide_index=True)
+
+        # Consecutive break analysis
+        st.write("---")
+        st.subheader("📊 Consecutive Break Analysis")
+        st.write("**Clustering of support breaks - when multiple breaks happen within a short period**")
+
+        # Max gap selector
+        max_gap = st.slider(
+            "Maximum days between consecutive breaks:",
+            min_value=1,
+            max_value=90,
+            value=30,
+            step=1,
+            help="Breaks within this many days are considered consecutive (part of the same cluster)"
+        )
+
+        # Analyze consecutive breaks
+        clusters, cluster_stats = analyze_consecutive_breaks(breaks, max_gap)
+
+        if cluster_stats and cluster_stats['total_clusters'] > 0:
+            # Display cluster statistics
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Clusters", cluster_stats['total_clusters'],
+                         help="Number of separate break clusters identified")
+            with col2:
+                st.metric("Multi-Break Clusters", cluster_stats['multi_break_clusters'],
+                         help="Clusters with 2+ consecutive breaks")
+            with col3:
+                st.metric("Max Consecutive", cluster_stats['max_breaks_in_cluster'],
+                         help="Largest number of breaks in a single cluster")
+            with col4:
+                st.metric("Avg Cluster Size", f"{cluster_stats['avg_breaks_per_cluster']:.1f}",
+                         help="Average number of breaks per cluster")
+
+            # Cluster size distribution chart
+            cluster_sizes = [c['num_breaks'] for c in clusters]
+            size_counts = pd.Series(cluster_sizes).value_counts().sort_index()
+
+            fig_dist = px.bar(
+                x=size_counts.index,
+                y=size_counts.values,
+                labels={'x': 'Number of Consecutive Breaks', 'y': 'Number of Clusters'},
+                title=f'Distribution of Consecutive Break Clusters (max {max_gap}d gap)',
+                color=size_counts.values,
+                color_continuous_scale='Reds'
+            )
+            fig_dist.update_layout(showlegend=False, height=400)
+            st.plotly_chart(fig_dist, use_container_width=True)
+
+            # Show multi-break clusters in detail
+            multi_break_clusters = [c for c in clusters if c['num_breaks'] > 1]
+
+            if len(multi_break_clusters) > 0:
+                st.write("**Multi-Break Clusters (2+ consecutive breaks):**")
+
+                for cluster in sorted(multi_break_clusters, key=lambda x: x['num_breaks'], reverse=True):
+                    with st.expander(
+                        f"🔴 Cluster #{cluster['cluster_id']}: {cluster['num_breaks']} breaks "
+                        f"({cluster['start_date'].strftime('%Y-%m-%d')} to {cluster['end_date'].strftime('%Y-%m-%d')})"
+                    ):
+                        col_a, col_b, col_c = st.columns(3)
+                        with col_a:
+                            st.metric("Duration", f"{cluster['duration_days']} days")
+                        with col_b:
+                            if cluster['avg_gap_days'] is not None:
+                                st.metric("Avg Gap", f"{cluster['avg_gap_days']:.1f} days")
+                        with col_c:
+                            st.metric("Total Drop", f"{cluster['total_drop_pct']:.2f}%")
+
+                        # Show individual breaks in cluster
+                        cluster_breaks = cluster['breaks'].copy()
+                        cluster_breaks['Date'] = cluster_breaks['Date'].dt.strftime('%Y-%m-%d')
+                        cluster_breaks.columns = ['Date', 'Previous Support', 'New Support', 'Drop %', 'Days From Previous']
+                        st.dataframe(cluster_breaks, width='stretch', hide_index=True)
+
+                # Summary stats for multi-break clusters
+                st.write("---")
+                st.write("**Multi-Break Cluster Summary:**")
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    avg_duration = np.mean([c['duration_days'] for c in multi_break_clusters])
+                    st.metric("Avg Cluster Duration", f"{avg_duration:.1f} days",
+                             help="Average time from first to last break in multi-break clusters")
+                with col2:
+                    avg_gaps = [c['avg_gap_days'] for c in multi_break_clusters if c['avg_gap_days'] is not None]
+                    if avg_gaps:
+                        st.metric("Avg Gap Between Breaks", f"{np.mean(avg_gaps):.1f} days",
+                                 help="Average days between consecutive breaks within clusters")
+                with col3:
+                    min_gaps = [c['min_gap_days'] for c in multi_break_clusters if c['min_gap_days'] is not None]
+                    if min_gaps:
+                        st.metric("Shortest Gap Ever", f"{min(min_gaps):.0f} days",
+                                 help="Shortest time between two consecutive breaks")
+
+            else:
+                st.info(f"No multi-break clusters found with max gap of {max_gap} days. All breaks are isolated.")
+
+        else:
+            st.info("Not enough breaks to analyze consecutive patterns")
 
     else:
         st.info(f"No support breaks detected in the selected date range for {period_name} {selected_stock}")
