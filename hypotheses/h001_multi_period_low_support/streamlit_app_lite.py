@@ -653,20 +653,6 @@ def main():
     else:
         st.info(f"No support breaks detected in the selected date range for {period_name} {selected_stock}")
 
-    # Show data table at the bottom
-    st.subheader("Price Data Table")
-    display_cols = ['Date', 'Open', 'High', 'Low', 'Close', 'rolling_low']
-    table_data = stock_data[display_cols].copy()
-    table_data['Date'] = table_data['Date'].dt.strftime('%Y-%m-%d')
-    table_data['rolling_low'] = table_data['rolling_low'].round(2)
-
-    st.dataframe(
-        table_data.rename(columns={'rolling_low': f'{period_name} Rolling Low'}),
-        width='stretch',
-        hide_index=True
-    )
-
-
 
 if __name__ == '__main__':
     main()

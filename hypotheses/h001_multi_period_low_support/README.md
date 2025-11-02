@@ -141,10 +141,6 @@ The Streamlit app has **two main tabs** for comprehensive analysis:
    - Summary statistics on clustering patterns
    - Critical for understanding risk during volatile periods
 
-5. **Price Data Table** (Bottom)
-   - Complete OHLC data for selected date range
-   - Rolling low values for each day
-
 ---
 
 ### 🏆 Tab 2: Top Performers Analysis
