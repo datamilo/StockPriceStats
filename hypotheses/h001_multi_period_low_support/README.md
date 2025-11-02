@@ -66,6 +66,14 @@
   - Processes only new data (much faster)
   - Called automatically by `../update_analysis_data.py`
   - Takes 5-10 minutes for new data
+- **`analyze_consecutive_breaks.py`** ⭐ NEW - Consecutive break pattern analysis
+  - Identifies clusters of consecutive support breaks
+  - Analyzes all stocks across all 5 periods
+  - Generates parquet files with cluster data
+  - Provides summary statistics and comparisons
+- **`test_consecutive_breaks.py`** - Quick test/demo script
+  - Demonstrates consecutive break analysis on a sample stock
+  - Useful for understanding the clustering concept
 
 ### Result Data Files
 - **`{period}_detailed_results.parquet`** - Detailed test results for each period
@@ -120,7 +128,20 @@ The Streamlit app has **two main tabs** for comprehensive analysis:
    - Rolling low changes frequency
    - Detailed breakdown of successful vs failed supports
 
-4. **Price Data Table** (Bottom)
+4. **Consecutive Break Analysis** ⭐ NEW
+   - Identifies clusters of consecutive support breaks
+   - Shows when breaks happen in rapid succession (e.g., within days)
+   - Interactive slider to adjust clustering definition (1-90 days)
+   - Distribution chart of cluster sizes
+   - Expandable cluster details showing:
+     - Duration of each cluster
+     - Average gap between breaks
+     - Total price drop during cluster
+     - Individual break dates and magnitudes
+   - Summary statistics on clustering patterns
+   - Critical for understanding risk during volatile periods
+
+5. **Price Data Table** (Bottom)
    - Complete OHLC data for selected date range
    - Rolling low values for each day
 
@@ -222,6 +243,49 @@ Identify seasonal trading opportunities.
 - **Date Range:** 2000-2025 (25 years)
 - **Total Records:** 359K price records (filtered for options-enabled stocks)
 - **Source:** `../../price_data_filtered.parquet`
+
+## Understanding Consecutive Break Patterns ⭐ NEW
+
+### What Are Consecutive Breaks?
+
+When support breaks, it often doesn't happen in isolation. Instead, breaks tend to **cluster together** during volatile periods. Understanding these patterns is critical for put option risk management.
+
+**Example - AAK AB (3-month rolling low):**
+- **2008 Financial Crisis Cluster:** 25 consecutive breaks over 126 days
+  - Some breaks just 1 day apart
+  - Total drop: -65.59%
+  - Average gap: 11 days between breaks
+
+- **Recent 2025 Cluster:** 16 consecutive breaks over 65 days
+  - Total drop: -19.16%
+  - Rapid succession of small breaks
+
+### Why This Matters for Put Writing
+
+**Risk Assessment:**
+- If one support breaks, there's an 81.6% chance more breaks will follow soon (based on AAK AB example)
+- During volatile periods, breaks cluster together with short gaps (1-14 days typical)
+- Single isolated breaks are actually the minority (18.4% of cases)
+
+**Strategy Implications:**
+- Don't immediately write new puts after a support break
+- Wait for the cluster to complete (volatility to settle)
+- Use the "max gap" slider to identify when a cluster has likely ended
+- Larger clusters often signal major trend changes (e.g., 2008 crisis)
+
+### How to Use the Feature
+
+1. **Select a stock** in the Streamlit app
+2. **Scroll to "Consecutive Break Analysis"** section
+3. **Adjust the gap slider** (default: 30 days)
+   - Lower values (5-15 days): Identifies tight volatility clusters
+   - Higher values (30-60 days): Broader trend identification
+4. **Review the distribution chart** to see clustering patterns
+5. **Expand cluster details** to see individual breaks
+
+The analysis automatically identifies and groups breaks based on your gap definition, showing you exactly when and how breaks cluster together.
+
+---
 
 ## Example: How the Analysis Works
 
