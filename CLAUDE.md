@@ -6,6 +6,25 @@
 
 ---
 
+## 🚨 CRITICAL DOCUMENTATION RULE
+
+**ALL DOCUMENTATION MUST REFLECT CURRENT STATE ONLY**
+
+- ✅ **DO:** Document what exists NOW and how it works TODAY
+- ❌ **DON'T:** Keep historical notes, old troubleshooting, previous fixes, deprecated approaches
+- ❌ **DON'T:** Keep obsolete files, backup files, old versions in hypotheses folders
+- ✅ **DO:** Clean up and remove outdated content when updating documentation
+
+**Why:** Documentation should guide users on the current system, not confuse them with historical context.
+
+**When updating:**
+1. Remove all references to old/deprecated approaches
+2. Delete obsolete files from hypotheses folders (OLD/, backup files, etc.)
+3. Update docs to reflect only the current working state
+4. Keep it clean and focused on NOW
+
+---
+
 ## Project Purpose
 
 This project analyzes stock price data to determine optimal put option writing strategies. The goal is to collect premium by writing put options while minimizing the risk of assignment.
