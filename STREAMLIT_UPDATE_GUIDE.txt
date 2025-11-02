@@ -1,0 +1,124 @@
+================================================================================
+STREAMLIT DASHBOARD - DATA UPDATE GUIDE
+================================================================================
+
+QUICK START
+-----------
+When you have new price data, just run ONE command:
+
+    python update_streamlit_data.py
+
+That's it! Everything else is automated.
+
+
+WHAT IT DOES
+------------
+1. Auto-copies newest price_data_all.parquet from OneDrive (if newer)
+2. Filters to 68 stocks with options (~1 min)
+3. Runs incremental H001 analysis - FAST, only new dates (~5-10 min)
+4. Regenerates top lists - SLOW, full recalculation (~30-40 min)
+5. Commits and pushes everything to GitHub automatically
+
+Total time: ~35-50 minutes
+
+
+NEXT RUN WILL BE FASTER? 
+------------------------
+YES and NO:
+
+✅ H001 Analysis: FAST (incremental - only processes new dates)
+❌ Top Lists: SLOW (full recalculation every time)
+
+Future optimization: Make top lists incremental too
+  - Would reduce 30-40 min → ~2-3 min
+  - Requires merging new data with existing statistics
+
+
+SCRIPT COMPARISON
+-----------------
+
+OLD WAY (multiple scripts):
+  1. python filter_relevant_stocks.py
+  2. python hypotheses/h001_multi_period_low_support/multi_period_low_analysis_incremental.py
+  3. python hypotheses/h001_multi_period_low_support/calculate_top_lists.py
+  4. git add . && git commit && git push
+
+NEW WAY (one script):
+  python update_streamlit_data.py
+  (Does all of the above automatically!)
+
+
+OTHER AVAILABLE SCRIPTS
+-----------------------
+
+update_analysis_data.py
+  - Similar but doesn't include top lists regeneration
+  - Use for H001 analysis updates only
+  - Faster: ~5-10 minutes
+
+calculate_top_lists.py  
+  - Regenerates ONLY top lists
+  - Use when you've changed ranking logic
+  - Time: ~30-40 minutes
+  - Now includes auto-commit/push
+
+
+WHAT GETS UPDATED
+-----------------
+
+Price Data:
+  ✓ price_data_all.parquet (all stocks)
+  ✓ price_data_filtered.parquet (68 stocks with options)
+
+H001 Analysis Results:
+  ✓ 1_month_detailed_results.parquet
+  ✓ 3_month_detailed_results.parquet
+  ✓ 6_month_detailed_results.parquet
+  ✓ 9_month_detailed_results.parquet
+  ✓ 1_year_detailed_results.parquet
+
+Top Lists (Pre-calculated for Streamlit):
+  ✓ top_lists/1_month_top_lists.parquet
+  ✓ top_lists/3_month_top_lists.parquet
+  ✓ top_lists/6_month_top_lists.parquet
+  ✓ top_lists/9_month_top_lists.parquet
+  ✓ top_lists/1_year_top_lists.parquet
+
+
+STREAMLIT DEPLOYMENT
+--------------------
+After pushing to GitHub:
+  - Streamlit Cloud auto-detects changes
+  - App reloads automatically with new data
+  - Usually takes 1-2 minutes to deploy
+
+
+TROUBLESHOOTING
+---------------
+
+"Script not found" error:
+  - Make sure you're in /home/gustaf/StockPriceStats directory
+  - Run: cd ~/StockPriceStats
+
+"No new data to process":
+  - Price data hasn't changed since last run
+  - This is normal! No action needed.
+
+Top lists taking too long:
+  - It's a heavy calculation (68 stocks × 5 periods × 25 years)
+  - Can run in background: nohup python update_streamlit_data.py &
+  - Check progress: tail -f nohup.out
+
+
+FUTURE IMPROVEMENTS
+-------------------
+[ ] Make top lists incremental (would save 25-35 minutes per run)
+[ ] Add progress bars to show which period is being processed
+[ ] Option to skip top lists if not needed
+[ ] Parallel processing for top lists calculation
+
+
+================================================================================
+Created: 2025-11-02
+Last Updated: 2025-11-02
+================================================================================
