@@ -646,7 +646,8 @@ html_content = f"""<!DOCTYPE html>
                 }},
                 xaxis: {{
                     title: 'Date',
-                    type: 'date'
+                    type: 'date',
+                    rangeslider: {{ visible: false }}
                 }},
                 hovermode: 'x unified',
                 height: 600,
