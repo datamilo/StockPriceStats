@@ -663,22 +663,29 @@ html_content = f"""<!DOCTYPE html>
 
             const chartDiv = document.getElementById('chart');
             chartDiv.on('plotly_relayout', function(eventdata) {{
-                if (eventdata['xaxis.range[0]'] && eventdata['xaxis.range[1]']) {{
+                // Check if x-axis range was changed (from zoom, pan, or slider)
+                const xRangeChanged = eventdata['xaxis.range[0]'] && eventdata['xaxis.range[1]'];
+                const autorange = eventdata['xaxis.autorange'];
+
+                if (xRangeChanged) {{
                     const xMin = new Date(eventdata['xaxis.range[0]']);
                     const xMax = new Date(eventdata['xaxis.range[1]']);
 
                     let yMin = Infinity;
                     let yMax = -Infinity;
 
+                    // Find min and max of both price highs/lows and rolling low within visible range
                     for (let i = 0; i < currentData.length; i++) {{
                         const date = new Date(currentData[i].date);
                         if (date >= xMin && date <= xMax) {{
-                            yMin = Math.min(yMin, currentData[i].low);
-                            yMax = Math.max(yMax, currentData[i].high);
+                            // Consider both price range and rolling low
+                            yMin = Math.min(yMin, currentData[i].low, currentData[i].rolling_low || Infinity);
+                            yMax = Math.max(yMax, currentData[i].high, currentData[i].rolling_low || -Infinity);
                         }}
                     }}
 
                     if (yMin !== Infinity && yMax !== -Infinity) {{
+                        // Add 5% padding on both sides
                         const padding = (yMax - yMin) * 0.05;
                         yMin -= padding;
                         yMax += padding;
@@ -688,7 +695,8 @@ html_content = f"""<!DOCTYPE html>
                             'yaxis.autorange': false
                         }});
                     }}
-                }} else if (eventdata['xaxis.autorange']) {{
+                }} else if (autorange) {{
+                    // Reset to autorange when user resets x-axis
                     Plotly.relayout('chart', {{'yaxis.autorange': true}});
                 }}
             }});
