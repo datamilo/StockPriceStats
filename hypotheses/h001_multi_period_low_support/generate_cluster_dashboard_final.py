@@ -610,6 +610,7 @@ html_content = f"""<!DOCTYPE html>
             const singleBreakClusters = clusters.filter(c => c.num_breaks === 1).length;
             const multiBreakClusters = clusters.filter(c => c.num_breaks > 1).length;
             const maxBreaks = clusters.length > 0 ? Math.max(...clusters.map(c => c.num_breaks)) : 0;
+            const avgBreaksPerCluster = clusters.length > 0 ? (breaks.length / clusters.length).toFixed(2) : 0;
 
             const html = `
                 <div class="metric-card">
@@ -619,6 +620,10 @@ html_content = f"""<!DOCTYPE html>
                 <div class="metric-card">
                     <div class="metric-label">Total Clusters</div>
                     <div class="metric-value">${{clusters.length}}</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Avg Breaks per Cluster</div>
+                    <div class="metric-value">${{avgBreaksPerCluster}}</div>
                 </div>
                 <div class="metric-card">
                     <div class="metric-label">Multi-Break Clusters</div>
