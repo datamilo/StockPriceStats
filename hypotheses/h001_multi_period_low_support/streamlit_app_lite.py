@@ -599,15 +599,17 @@ def main():
             fig_dist.update_layout(showlegend=False, height=400)
             st.plotly_chart(fig_dist, use_container_width=True)
 
-            # Show multi-break clusters in detail
-            multi_break_clusters = [c for c in clusters if c['num_breaks'] > 1]
+            # Show all clusters in detail
+            if len(clusters) > 0:
+                st.write("**All Break Clusters:**")
 
-            if len(multi_break_clusters) > 0:
-                st.write("**Multi-Break Clusters (2+ consecutive breaks):**")
+                for cluster in sorted(clusters, key=lambda x: x['cluster_id']):
+                    # Use different emoji for single vs multi-break clusters
+                    emoji = "🔴" if cluster['num_breaks'] > 1 else "🟡"
+                    break_label = "break" if cluster['num_breaks'] == 1 else "breaks"
 
-                for cluster in sorted(multi_break_clusters, key=lambda x: x['cluster_id']):
                     with st.expander(
-                        f"🔴 Cluster #{cluster['cluster_id']}: {cluster['num_breaks']} breaks "
+                        f"{emoji} Cluster #{cluster['cluster_id']}: {cluster['num_breaks']} {break_label} "
                         f"({cluster['start_date'].strftime('%Y-%m-%d')} to {cluster['end_date'].strftime('%Y-%m-%d')})"
                     ):
                         col_a, col_b, col_c = st.columns(3)
@@ -625,27 +627,29 @@ def main():
                         cluster_breaks.columns = ['Date', 'Previous Support', 'New Support', 'Drop %', 'Days From Previous']
                         st.dataframe(cluster_breaks, width='stretch', hide_index=True)
 
-                # Summary stats for multi-break clusters
-                st.write("---")
-                st.write("**Multi-Break Cluster Summary:**")
-                col1, col2, col3 = st.columns(3)
-                with col1:
-                    avg_duration = np.mean([c['duration_days'] for c in multi_break_clusters])
-                    st.metric("Avg Cluster Duration", f"{avg_duration:.1f} days",
-                             help="Average time from first to last break in multi-break clusters")
-                with col2:
-                    avg_gaps = [c['avg_gap_days'] for c in multi_break_clusters if c['avg_gap_days'] is not None]
-                    if avg_gaps:
-                        st.metric("Avg Gap Between Breaks", f"{np.mean(avg_gaps):.1f} days",
-                                 help="Average days between consecutive breaks within clusters")
-                with col3:
-                    min_gaps = [c['min_gap_days'] for c in multi_break_clusters if c['min_gap_days'] is not None]
-                    if min_gaps:
-                        st.metric("Shortest Gap Ever", f"{min(min_gaps):.0f} days",
-                                 help="Shortest time between two consecutive breaks")
+                # Summary stats for multi-break clusters only
+                multi_break_clusters = [c for c in clusters if c['num_breaks'] > 1]
+                if len(multi_break_clusters) > 0:
+                    st.write("---")
+                    st.write("**Multi-Break Cluster Summary:**")
+                    col1, col2, col3 = st.columns(3)
+                    with col1:
+                        avg_duration = np.mean([c['duration_days'] for c in multi_break_clusters])
+                        st.metric("Avg Cluster Duration", f"{avg_duration:.1f} days",
+                                 help="Average time from first to last break in multi-break clusters")
+                    with col2:
+                        avg_gaps = [c['avg_gap_days'] for c in multi_break_clusters if c['avg_gap_days'] is not None]
+                        if avg_gaps:
+                            st.metric("Avg Gap Between Breaks", f"{np.mean(avg_gaps):.1f} days",
+                                     help="Average days between consecutive breaks within clusters")
+                    with col3:
+                        min_gaps = [c['min_gap_days'] for c in multi_break_clusters if c['min_gap_days'] is not None]
+                        if min_gaps:
+                            st.metric("Shortest Gap Ever", f"{min(min_gaps):.0f} days",
+                                     help="Shortest time between two consecutive breaks")
 
             else:
-                st.info(f"No multi-break clusters found with max gap of {max_gap} days. All breaks are isolated.")
+                st.info(f"No clusters found.")
 
         else:
             st.info("Not enough breaks to analyze consecutive patterns")
