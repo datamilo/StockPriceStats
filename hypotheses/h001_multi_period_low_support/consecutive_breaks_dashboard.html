@@ -226,6 +226,36 @@
             text-align: center;
             color: #999;
         }
+
+        .time-range-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .time-range-btn {
+            padding: 8px 16px;
+            border: 1px solid #ddd;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.2s;
+            color: #333;
+        }
+
+        .time-range-btn:hover {
+            border-color: #ff9800;
+            color: #ff9800;
+        }
+
+        .time-range-btn.active {
+            background: #ff9800;
+            color: white;
+            border-color: #ff9800;
+        }
     </style>
 </head>
 <body>
@@ -262,6 +292,13 @@
         <div class="metrics" id="metricsContainer"></div>
 
         <h2>Support Breaks Timeline</h2>
+        <div class="time-range-buttons">
+            <button class="time-range-btn active" data-days="all">All Data</button>
+            <button class="time-range-btn" data-days="365">1 Year</button>
+            <button class="time-range-btn" data-days="180">6 Months</button>
+            <button class="time-range-btn" data-days="90">3 Months</button>
+            <button class="time-range-btn" data-days="30">1 Month</button>
+        </div>
         <div id="chart"></div>
 
         <h2>Break Cluster Distribution</h2>
@@ -571,11 +608,13 @@
                 },
                 xaxis: {
                     title: 'Date',
-                    rangeslider: { visible: false }
+                    rangeslider: { visible: true, thickness: 0.05 },
+                    type: 'date'
                 },
                 hovermode: 'x unified',
-                height: 600,
-                margin: { l: 50, r: 50, t: 60, b: 50 }
+                height: 700,
+                margin: { l: 50, r: 50, t: 80, b: 100 },
+                dragmode: 'zoom'
             };
 
             Plotly.newPlot('chart', [trace1, trace2, trace3], layout, {
@@ -808,6 +847,24 @@
             displayBreakStatistics(breakStats);
         }
 
+        // Time range handler
+        function setTimeRange(days) {
+            const chartDiv = document.getElementById('chart');
+            const lastDate = new Date(currentData[currentData.length - 1].date);
+            let startDate;
+
+            if (days === 'all') {
+                startDate = new Date(currentData[0].date);
+            } else {
+                startDate = new Date(lastDate);
+                startDate.setDate(startDate.getDate() - days);
+            }
+
+            Plotly.relayout('chart', {
+                'xaxis.range': [startDate, lastDate]
+            });
+        }
+
         // Event listeners
         document.getElementById('stockSelect').addEventListener('change', function() {
             currentStock = this.value;
@@ -820,6 +877,16 @@
         });
 
         document.getElementById('maxGap').addEventListener('change', updateDisplay);
+
+        // Time range button listeners
+        document.querySelectorAll('.time-range-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.time-range-btn').forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+                const days = this.getAttribute('data-days');
+                setTimeRange(days === 'all' ? 'all' : parseInt(days));
+            });
+        });
 
         // Initialize
         updateDisplay();
