@@ -137,6 +137,10 @@ The standalone **`consecutive_breaks_dashboard.html`** provides a lightweight, o
 
 **Top Controls:**
 - **Stock Selector:** Choose from 68 Nordic stocks
+- **Date Range Filter From/To:** Master filter that overrides all calculations (constrains all analysis to selected date range)
+  - Automatically set to stock's full available data range
+  - Change to analyze specific historical periods
+  - All metrics, breaks, and clusters recalculate within this filter
 - **Rolling Low Period:** Select 30d (1M), 90d (3M), 180d (6M), 270d (9M), or 365d (1Y)
 - **Max Days Between Breaks:** Adjust clustering sensitivity (default: 30 days)
 
@@ -159,6 +163,7 @@ The standalone **`consecutive_breaks_dashboard.html`** provides a lightweight, o
 **Key Metrics Cards**
 - Total support breaks identified
 - Total clusters found
+- Average number of breaks per cluster (density metric)
 - Number of multi-break clusters (volatility events)
 - Maximum consecutive breaks in a cluster
 
@@ -166,6 +171,13 @@ The standalone **`consecutive_breaks_dashboard.html`** provides a lightweight, o
 - Average duration of multi-break clusters
 - Average gap between breaks in clusters
 - Shortest gap observed (tightest clustering)
+
+**Metric Cards (per cluster)**
+- Duration: Days from cluster start to end
+- Days Since Last Cluster Break: Days from previous cluster's last break to this cluster's first break
+- Avg Gap: Average days between consecutive breaks within cluster
+- Total Drop: Total % price decline during entire cluster
+- Days Since End: Days from cluster end to latest data date
 
 **Support Break Statistics**
 - Total breaks and stability percentage
@@ -177,21 +189,36 @@ The standalone **`consecutive_breaks_dashboard.html`** provides a lightweight, o
 **All Break Clusters Details**
 - Expandable list of every cluster found
 - Duration, gaps, and total price drop
-- Individual break dates with drop magnitudes
+- Individual break dates with drop magnitudes and days since last break
+- Break table columns:
+  - Date: When the support break occurred
+  - Previous Support: Support level before break
+  - New Support: New lower support level
+  - Drop %: Percentage decline from previous support
+  - Days Since Last Break: Calendar days since previous break (- for first break)
 - Cluster severity indicators (🔴 = multi-break, 🟡 = single)
 
 ### Interaction Tips
 
+**Using the Date Range Filter:**
+1. Set "Date Range Filter From" and "To" to constrain analysis to a specific period
+2. All metrics, breaks, and clusters will recalculate within the filtered date range
+3. Time range buttons (All Data, 1Y, 6M, 3M, 1M) now work within the filtered range
+4. Useful for analyzing specific market conditions or historical periods
+
 **For Fast Browsing:**
 1. Click time range buttons (1M, 3M, 6M, 1Y) to jump to periods of interest
-2. Look at the cluster distribution chart for volatility hot spots
-3. Expand specific clusters to see exact break patterns
+2. Watch the y-axis automatically rescale to fit visible data
+3. Look at the cluster distribution chart for volatility hot spots
+4. Expand specific clusters to see exact break patterns and timing
 
 **For Detailed Analysis:**
-1. Use box zoom (click-drag on chart) to examine specific periods closely
-2. Watch how the y-axis rescales when you click time buttons
-3. Compare cluster statistics across different rolling periods
-4. Study individual break magnitudes in the cluster details
+1. Use date range filter to focus on specific periods
+2. Use box zoom (click-drag on chart) to examine specific areas closely
+3. Compare how y-axis adjusts between different periods
+4. Compare cluster statistics across different rolling periods
+5. Study individual break magnitudes and spacing in the cluster details
+6. Note the "Days Since Last Cluster Break" to identify transition periods between volatility events
 
 **For Offline Use:**
 - Works without internet connection (all data embedded)
@@ -498,15 +525,28 @@ For comprehensive update instructions, troubleshooting, and examples:
 
 ## Recent Updates (2025-11-03)
 
-### HTML Dashboard Enhancements
-- ✅ Added rolling low blue dotted line visualization to match Streamlit app
-- ✅ Added time range preset buttons (All Data, 1Y, 6M, 3M, 1M) for quick navigation
-- ✅ Implemented dynamic y-axis scaling that adjusts to visible data
-- ✅ Increased chart interactivity with box zoom and pan controls
-- ✅ Removed rangeslider for cleaner interface
-- ✅ Improved chart responsiveness and visibility (600px height)
+### HTML Dashboard - Enhanced Controls & Metrics
+- ✅ Added master "Date Range Filter" controls (From/To)
+  - Overrides all calculations and recalculates within selected range
+  - Time range buttons now work within the filtered period
+  - Perfect for analyzing specific historical periods
+- ✅ Fixed dynamic y-axis scaling for time range buttons (was only working for manual zoom)
+  - Y-axis now properly rescales when clicking time range buttons
+  - Maintains 5% padding on both sides for visibility
+- ✅ Added "Avg Breaks per Cluster" metric card
+  - Quick overview of cluster density (Total Breaks / Total Clusters)
+- ✅ Added "Days Since Last Cluster Break" metric in cluster cards
+  - Shows days from previous cluster's last break to current cluster's first break
+  - Useful for identifying transition periods between volatility events
+- ✅ Added "Days Since Last Break" column in cluster break tables
+  - Shows calendar days between consecutive breaks within a cluster
+  - First break shows "-" (no previous break to compare)
+  - Avg Gap metric excludes first break to maintain consistency
 
 ### Dashboard is Now Feature-Complete
+- Master date range filter for flexible period analysis
+- Complete cluster metrics and statistics
+- Fixed interactive controls and dynamic scaling
 - Same data and analysis as Streamlit app
 - No dependencies or installation required
 - Works completely offline
