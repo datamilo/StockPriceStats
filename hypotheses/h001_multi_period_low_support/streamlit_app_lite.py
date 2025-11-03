@@ -612,7 +612,7 @@ def main():
                         f"{emoji} Cluster #{cluster['cluster_id']}: {cluster['num_breaks']} {break_label} "
                         f"({cluster['start_date'].strftime('%Y-%m-%d')} to {cluster['end_date'].strftime('%Y-%m-%d')})"
                     ):
-                        col_a, col_b, col_c = st.columns(3)
+                        col_a, col_b, col_c, col_d = st.columns(4)
                         with col_a:
                             st.metric("Duration", f"{cluster['duration_days']} days")
                         with col_b:
@@ -620,6 +620,10 @@ def main():
                                 st.metric("Avg Gap", f"{cluster['avg_gap_days']:.1f} days")
                         with col_c:
                             st.metric("Total Drop", f"{cluster['total_drop_pct']:.2f}%")
+                        with col_d:
+                            # Calculate days since cluster end date to today
+                            days_since_cluster = (stock_data['Date'].max() - cluster['end_date']).days
+                            st.metric("Days Since End", f"{days_since_cluster}d")
 
                         # Show individual breaks in cluster
                         cluster_breaks = cluster['breaks'].copy()

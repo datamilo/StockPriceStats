@@ -753,6 +753,11 @@ html_content = f"""<!DOCTYPE html>
                 const emoji = cluster.num_breaks > 1 ? '🔴' : '🟡';
                 const breakLabel = cluster.num_breaks === 1 ? 'break' : 'breaks';
 
+                // Calculate days since cluster end to current date
+                const endDate = new Date(cluster.end_date);
+                const today = new Date(currentData[currentData.length - 1].date);
+                const daysSinceEnd = Math.floor((today - endDate) / (1000 * 60 * 60 * 24));
+
                 html += `
                     <div class="cluster-item">
                         <div class="cluster-header">
@@ -780,6 +785,10 @@ html_content = f"""<!DOCTYPE html>
                             <div class="cluster-stat">
                                 <div class="cluster-stat-label">Total Drop</div>
                                 <div class="cluster-stat-value">${{cluster.total_drop.toFixed(2)}}%</div>
+                            </div>
+                            <div class="cluster-stat">
+                                <div class="cluster-stat-label">Days Since End</div>
+                                <div class="cluster-stat-value">${{daysSinceEnd}}d</div>
                             </div>
                         </div>
 
