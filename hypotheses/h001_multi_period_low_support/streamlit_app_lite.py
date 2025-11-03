@@ -474,13 +474,31 @@ def main():
         height=600,
         hovermode='x unified',
         margin=dict(l=0, r=0, t=40, b=0),
-        yaxis=dict(autorange=True, fixedrange=False),
-        xaxis=dict(autorange=True, fixedrange=False)
+        xaxis=dict(rangeslider=dict(visible=False)),
+        dragmode='zoom'
+    )
+
+    # Add range selector buttons for quick time period selection
+    fig.update_xaxes(
+        rangeselector=dict(
+            buttons=list([
+                dict(count=1, label="1m", step="month", stepmode="backward"),
+                dict(count=3, label="3m", step="month", stepmode="backward"),
+                dict(count=6, label="6m", step="month", stepmode="backward"),
+                dict(count=1, label="1y", step="year", stepmode="backward"),
+                dict(step="all", label="All")
+            ]),
+            bgcolor="lightgray",
+            activecolor="gray",
+            x=0,
+            y=1.02
+        )
     )
 
     # Display with proper config
+    # Note: Plotly candlestick charts automatically adjust y-axis to visible data when zooming on x-axis
     config = {'responsive': True, 'displayModeBar': True, 'displaylogo': False}
-    st.plotly_chart(fig, config=config)
+    st.plotly_chart(fig, config=config, use_container_width=True)
 
     # Support level statistics
     st.subheader("Support Level Statistics")
