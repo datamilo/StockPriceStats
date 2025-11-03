@@ -758,6 +758,12 @@ html_content = f"""<!DOCTYPE html>
                 const today = new Date(currentData[currentData.length - 1].date);
                 const daysSinceEnd = Math.floor((today - endDate) / (1000 * 60 * 60 * 24));
 
+                // Calculate days since last cluster break (from previous cluster's last break to this cluster's first break)
+                let daysSinceLastClusterBreak = '-';
+                if (cluster.id > 0 && cluster.breaks.length > 0 && cluster.breaks[0].days_since !== null) {{
+                    daysSinceLastClusterBreak = cluster.breaks[0].days_since + 'd';
+                }}
+
                 html += `
                     <div class="cluster-item">
                         <div class="cluster-header">
@@ -769,6 +775,10 @@ html_content = f"""<!DOCTYPE html>
                             <div class="cluster-stat">
                                 <div class="cluster-stat-label">Duration</div>
                                 <div class="cluster-stat-value">${{cluster.duration_days}} days</div>
+                            </div>
+                            <div class="cluster-stat">
+                                <div class="cluster-stat-label">Days Since Last Cluster Break</div>
+                                <div class="cluster-stat-value">${{daysSinceLastClusterBreak}}</div>
                             </div>
                 `;
 
@@ -813,10 +823,8 @@ html_content = f"""<!DOCTYPE html>
                         const currentDate = new Date(breakItem.date);
                         const prevDate = new Date(cluster.breaks[i - 1].date);
                         daysSinceLastBreak = Math.floor((currentDate - prevDate) / (1000 * 60 * 60 * 24)) + 'd';
-                    }} else if (cluster.id > 0) {{
-                        // For first break in cluster, calculate days since last break from previous cluster
-                        daysSinceLastBreak = breakItem.days_since || '-';
                     }} else {{
+                        // First break in cluster - don't show days since value in table
                         daysSinceLastBreak = '-';
                     }}
 
