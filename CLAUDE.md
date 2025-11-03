@@ -212,6 +212,13 @@ Every hypothesis folder contains:
   - Visual support level markers
   - Interactive price charts with rolling low overlay
   - All prices in Swedish Krona (kr)
+- **Standalone HTML Dashboard:** `hypotheses/h001_multi_period_low_support/consecutive_breaks_dashboard.html`
+  - No installation required - just double-click to open
+  - Works offline with all data embedded
+  - Master date range filter for flexible period analysis
+  - Dynamic y-axis scaling for all time range buttons
+  - Complete cluster metrics and break tables
+  - Perfect for sharing and quick analysis
 - **Quick Reference:** `hypotheses/h001_multi_period_low_support/README.md`
 - **Detailed Methodology:** `hypotheses/h001_multi_period_low_support/METHODOLOGY_AND_FINDINGS.md`
 
