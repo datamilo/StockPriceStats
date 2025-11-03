@@ -662,11 +662,41 @@ html_content = f"""<!DOCTYPE html>
             }});
 
             const chartDiv = document.getElementById('chart');
-
             chartDiv.on('plotly_relayout', function(eventdata) {{
-                // Only handle reset events (autorange), NOT rangeslider drags
-                // Y-axis scaling is handled by setTimeRange() for time buttons
-                if (eventdata['xaxis.autorange']) {{
+                // Check if x-axis range was changed (from zoom, pan, or slider)
+                const xRangeChanged = eventdata['xaxis.range[0]'] && eventdata['xaxis.range[1]'];
+                const autorange = eventdata['xaxis.autorange'];
+
+                if (xRangeChanged) {{
+                    const xMin = new Date(eventdata['xaxis.range[0]']);
+                    const xMax = new Date(eventdata['xaxis.range[1]']);
+
+                    let yMin = Infinity;
+                    let yMax = -Infinity;
+
+                    // Find min and max of both price highs/lows and rolling low within visible range
+                    for (let i = 0; i < currentData.length; i++) {{
+                        const date = new Date(currentData[i].date);
+                        if (date >= xMin && date <= xMax) {{
+                            // Consider both price range and rolling low
+                            yMin = Math.min(yMin, currentData[i].low, currentData[i].rolling_low || Infinity);
+                            yMax = Math.max(yMax, currentData[i].high, currentData[i].rolling_low || -Infinity);
+                        }}
+                    }}
+
+                    if (yMin !== Infinity && yMax !== -Infinity) {{
+                        // Add 5% padding on both sides
+                        const padding = (yMax - yMin) * 0.05;
+                        yMin -= padding;
+                        yMax += padding;
+
+                        Plotly.relayout('chart', {{
+                            'yaxis.range': [yMin, yMax],
+                            'yaxis.autorange': false
+                        }});
+                    }}
+                }} else if (autorange) {{
+                    // Reset to autorange when user resets x-axis
                     Plotly.relayout('chart', {{'yaxis.autorange': true}});
                 }}
             }});
@@ -876,29 +906,9 @@ html_content = f"""<!DOCTYPE html>
                 startDate.setDate(startDate.getDate() - days);
             }}
 
-            // Calculate y-axis range based on visible data
-            let yMin = Infinity;
-            let yMax = -Infinity;
-
-            for (let i = 0; i < currentData.length; i++) {{
-                const date = new Date(currentData[i].date);
-                if (date >= startDate && date <= lastDate) {{
-                    yMin = Math.min(yMin, currentData[i].low, currentData[i].rolling_low || Infinity);
-                    yMax = Math.max(yMax, currentData[i].high, currentData[i].rolling_low || -Infinity);
-                }}
-            }}
-
-            let updates = {{'xaxis.range': [startDate, lastDate]}};
-
-            if (yMin !== Infinity && yMax !== -Infinity) {{
-                const padding = (yMax - yMin) * 0.05;
-                yMin -= padding;
-                yMax += padding;
-                updates['yaxis.range'] = [yMin, yMax];
-                updates['yaxis.autorange'] = false;
-            }}
-
-            Plotly.relayout('chart', updates);
+            Plotly.relayout('chart', {{
+                'xaxis.range': [startDate, lastDate]
+            }});
         }}
 
         // Event listeners
