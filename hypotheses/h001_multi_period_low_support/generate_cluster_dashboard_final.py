@@ -799,18 +799,34 @@ html_content = f"""<!DOCTYPE html>
                                     <th>Previous Support</th>
                                     <th>New Support</th>
                                     <th>Drop %</th>
+                                    <th>Days Since Last Break</th>
                                 </tr>
                             </thead>
                             <tbody>
                 `;
 
-                for (let breakItem of cluster.breaks) {{
+                for (let i = 0; i < cluster.breaks.length; i++) {{
+                    const breakItem = cluster.breaks[i];
+                    let daysSinceLastBreak = '';
+
+                    if (i > 0) {{
+                        const currentDate = new Date(breakItem.date);
+                        const prevDate = new Date(cluster.breaks[i - 1].date);
+                        daysSinceLastBreak = Math.floor((currentDate - prevDate) / (1000 * 60 * 60 * 24)) + 'd';
+                    }} else if (cluster.id > 0) {{
+                        // For first break in cluster, calculate days since last break from previous cluster
+                        daysSinceLastBreak = breakItem.days_since || '-';
+                    }} else {{
+                        daysSinceLastBreak = '-';
+                    }}
+
                     html += `
                         <tr>
                             <td>${{breakItem.date}}</td>
                             <td>${{breakItem.prev_support.toFixed(2)}} kr</td>
                             <td>${{breakItem.new_support.toFixed(2)}} kr</td>
                             <td>${{breakItem.drop_pct.toFixed(2)}}%</td>
+                            <td>${{daysSinceLastBreak}}</td>
                         </tr>
                     `;
                 }}
