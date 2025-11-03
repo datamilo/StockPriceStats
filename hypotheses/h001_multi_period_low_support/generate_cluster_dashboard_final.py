@@ -296,9 +296,6 @@ html_content = f"""<!DOCTYPE html>
             </div>
         </div>
 
-        <div class="info-box">
-            ✅ <strong>Dashboard Ready:</strong> All data is embedded and ready to use. No external files needed!
-        </div>
 
         <div class="metrics" id="metricsContainer"></div>
 
