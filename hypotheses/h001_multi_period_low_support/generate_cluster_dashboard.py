@@ -341,6 +341,11 @@ html_content = f"""<!DOCTYPE html>
             <h2>Cluster Statistics</h2>
             <div class="stats-grid" id="statsGrid"></div>
         </div>
+
+        <div class="stats-section">
+            <h2>Support Break Statistics</h2>
+            <div class="stats-grid" id="breakStatsGrid"></div>
+        </div>
     </div>
 
     <script>
@@ -402,17 +407,70 @@ html_content = f"""<!DOCTYPE html>
             for (let i = 1; i < data.length; i++) {{
                 if (data[i].rolling_low && data[i-1].rolling_low) {{
                     if (data[i].rolling_low < data[i-1].rolling_low) {{
+                        const daysSince = breaks.length > 0
+                            ? Math.floor((new Date(data[i].date) - new Date(breaks[breaks.length - 1].date)) / (1000 * 60 * 60 * 24))
+                            : null;
+
                         breaks.push({{
                             date: data[i].date,
                             prev_support: data[i-1].rolling_low,
                             new_support: data[i].rolling_low,
-                            drop_pct: ((data[i].rolling_low - data[i-1].rolling_low) / data[i-1].rolling_low * 100)
+                            drop_pct: ((data[i].rolling_low - data[i-1].rolling_low) / data[i-1].rolling_low * 100),
+                            days_since: daysSince
                         }});
                     }}
                 }}
             }}
 
             return breaks;
+        }}
+
+        // Calculate support break statistics
+        function calculateBreakStats(data, breaks) {{
+            if (breaks.length === 0) return null;
+
+            const totalDays = data.length;
+            const stability = ((totalDays - breaks.length) / totalDays * 100);
+
+            const dropPcts = breaks.map(b => b.drop_pct);
+            const avgDrop = dropPcts.reduce((a, b) => a + b, 0) / dropPcts.length;
+            const maxDrop = Math.min(...dropPcts);
+
+            const daysBetween = breaks.filter(b => b.days_since !== null).map(b => b.days_since);
+            const avgDaysBetween = daysBetween.length > 0
+                ? daysBetween.reduce((a, b) => a + b, 0) / daysBetween.length
+                : null;
+
+            const medianDaysBetween = daysBetween.length > 0
+                ? daysBetween.sort((a, b) => a - b)[Math.floor(daysBetween.length / 2)]
+                : null;
+
+            const minDaysBetween = daysBetween.length > 0 ? Math.min(...daysBetween) : null;
+            const maxDaysBetween = daysBetween.length > 0 ? Math.max(...daysBetween) : null;
+
+            const lastBreak = new Date(breaks[breaks.length - 1].date);
+            const lastDate = new Date(data[data.length - 1].date);
+            const daysSinceLastBreak = Math.floor((lastDate - lastBreak) / (1000 * 60 * 60 * 24));
+
+            const firstBreak = new Date(breaks[0].date);
+            const firstDate = new Date(data[0].date);
+            const daysBeforeFirstBreak = Math.floor((firstBreak - firstDate) / (1000 * 60 * 60 * 24));
+
+            return {{
+                totalBreaks: breaks.length,
+                stability: stability,
+                avgDrop: avgDrop,
+                maxDrop: maxDrop,
+                avgDaysBetween: avgDaysBetween,
+                medianDaysBetween: medianDaysBetween,
+                minDaysBetween: minDaysBetween,
+                maxDaysBetween: maxDaysBetween,
+                daysSinceLastBreak: daysSinceLastBreak,
+                daysBeforeFirstBreak: daysBeforeFirstBreak,
+                tradingDaysPerBreak: totalDays / breaks.length,
+                firstBreakDate: breaks[0].date,
+                lastBreakDate: breaks[breaks.length - 1].date
+            }};
         }}
 
         // Analyze consecutive breaks (clusters)
@@ -776,11 +834,72 @@ html_content = f"""<!DOCTYPE html>
             // Analyze clusters
             currentClusters = analyzeConsecutiveBreaks(currentBreaks, maxGapDays);
 
+            // Calculate break statistics
+            const breakStats = calculateBreakStats(filteredData, currentBreaks);
+
             // Update UI
             updateMetrics(currentBreaks, currentClusters);
             createTimelineChart(filteredData, currentBreaks);
             createClusterChart(currentClusters);
             displayClusters(currentClusters);
+            displayBreakStatistics(breakStats);
+        }}
+
+        // Display break statistics
+        function displayBreakStatistics(stats) {{
+            if (!stats) {{
+                document.getElementById('breakStatsGrid').innerHTML = '<div class="empty-state">No breaks to analyze</div>';
+                return;
+            }}
+
+            const html = `
+                <div class="stat-card">
+                    <h4>Support Breaks</h4>
+                    <div class="value">${{stats.totalBreaks}}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Days Since Last Break</h4>
+                    <div class="value">${{stats.daysSinceLastBreak}}d</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Stability</h4>
+                    <div class="value">${{stats.stability.toFixed(1)}}%</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Trading Days per Break</h4>
+                    <div class="value">${{stats.tradingDaysPerBreak.toFixed(0)}}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Days Before First Break</h4>
+                    <div class="value">${{stats.daysBeforeFirstBreak}}d</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Avg Days Between Breaks</h4>
+                    <div class="value">${{stats.avgDaysBetween ? stats.avgDaysBetween.toFixed(0) + 'd' : 'N/A'}}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Median Days Between Breaks</h4>
+                    <div class="value">${{stats.medianDaysBetween ? stats.medianDaysBetween + 'd' : 'N/A'}}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Shortest Break Duration</h4>
+                    <div class="value">${{stats.minDaysBetween ? stats.minDaysBetween + 'd' : 'N/A'}}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Longest Break Duration</h4>
+                    <div class="value">${{stats.maxDaysBetween ? stats.maxDaysBetween + 'd' : 'N/A'}}</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Avg Break Magnitude</h4>
+                    <div class="value">${{stats.avgDrop.toFixed(2)}}%</div>
+                </div>
+                <div class="stat-card">
+                    <h4>Biggest Break</h4>
+                    <div class="value">${{stats.maxDrop.toFixed(2)}}%</div>
+                </div>
+            `;
+
+            document.getElementById('breakStatsGrid').innerHTML = html;
         }}
 
         // Event listeners
