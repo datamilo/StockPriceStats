@@ -646,12 +646,11 @@ html_content = f"""<!DOCTYPE html>
                 }},
                 xaxis: {{
                     title: 'Date',
-                    rangeslider: {{ visible: true, thickness: 0.05 }},
                     type: 'date'
                 }},
                 hovermode: 'x unified',
-                height: 700,
-                margin: {{ l: 50, r: 50, t: 80, b: 100 }},
+                height: 600,
+                margin: {{ l: 50, r: 50, t: 80, b: 50 }},
                 dragmode: 'zoom'
             }};
 
