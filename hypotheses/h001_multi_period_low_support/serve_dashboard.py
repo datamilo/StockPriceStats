@@ -14,10 +14,25 @@ from pathlib import Path
 import time
 
 # Configuration
-PORT = 8000
 SCRIPT_DIR = Path(__file__).parent
 HTML_FILE = SCRIPT_DIR / 'consecutive_breaks_dashboard_lite.html'
 DATA_FILE = SCRIPT_DIR / '../../price_data_filtered.parquet'
+
+# Find an available port (start at 8000)
+def find_available_port(start_port=8000, max_attempts=10):
+    """Find an available port, trying ports in sequence"""
+    import socket
+    for port in range(start_port, start_port + max_attempts):
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.bind(('', port))
+            sock.close()
+            return port
+        except OSError:
+            continue
+    raise RuntimeError(f"Could not find available port between {start_port} and {start_port + max_attempts}")
+
+PORT = find_available_port()
 
 class MyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self):
