@@ -1,11 +1,22 @@
 # H001: Multi-Period Support Level Analysis for Put Option Writing
 
-> **📊 START HERE:** Run the Streamlit app to interactively analyze any stock!
+> **📊 START HERE:** Choose your preferred analysis tool:
 >
+> **Option 1: Streamlit App (Recommended)**
 > ```bash
 > streamlit run streamlit_app_lite.py
 > ```
 > Then open your browser to `http://localhost:8501`
+>
+> **Option 2: Standalone HTML Dashboard**
+> ```bash
+> # Self-contained version (no dependencies)
+> open consecutive_breaks_dashboard.html
+>
+> # OR lightweight version with web server
+> python serve_dashboard.py
+> ```
+> Then open your browser to `http://localhost:8000`
 
 ## Hypothesis & Conclusion
 
@@ -49,7 +60,9 @@
 
 ## Files in This Hypothesis
 
-### Interactive Web App
+### Interactive Analysis Tools
+
+#### **Streamlit Application** (Recommended)
 - **`streamlit_app_lite.py`** - Main Streamlit application
   - Real-time analysis of any stock
   - Period selection (1/3/6/9/12 months)
@@ -57,6 +70,30 @@
   - Date range filtering
   - Support level markers (red dots when support breaks)
   - Performance statistics
+  - Consecutive break clustering analysis
+
+#### **Standalone HTML Dashboards** (Alternative)
+Two versions available for different use cases:
+
+- **`consecutive_breaks_dashboard.html`** (15MB)
+  - ✅ Fully self-contained, no dependencies
+  - ✅ All data embedded in one HTML file
+  - ✅ Just open in browser (works offline)
+  - ✅ Perfect for sharing/archiving
+  - ❌ Large file size
+
+- **`consecutive_breaks_dashboard_lite.html`** (37KB)
+  - ✅ Tiny file size (400x smaller!)
+  - ✅ Loads data dynamically from parquet
+  - ✅ Better for GitHub storage
+  - ❌ Requires web server to run (CORS restriction)
+  - ✅ Use `serve_dashboard.py` to run locally
+
+- **`serve_dashboard.py`** - Simple web server for lightweight dashboard
+  - Solves browser CORS restrictions
+  - Auto-opens dashboard in browser
+  - Just run: `python serve_dashboard.py`
+  - Opens on `http://localhost:8000`
 
 ### Analysis Scripts
 - **`multi_period_low_analysis.py`** - Full re-analysis (for first-time setup)
