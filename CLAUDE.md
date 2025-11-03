@@ -25,6 +25,52 @@
 
 ---
 
+## 🔄 GitHub Sync Workflow
+
+**CRITICAL: Always sync changes to GitHub after completing any work**
+
+### After Making Changes
+
+```bash
+# 1. Check what changed
+git status
+git diff [filename]  # Optional: review specific changes
+
+# 2. Stage and commit changes
+git add .
+git commit -m "Description of changes
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+Co-Authored-By: Claude <noreply@anthropic.com>"
+
+# 3. Push to GitHub
+git push origin main
+```
+
+### Why This Is Important
+
+- **Backup:** Protects work from local system failures
+- **Collaboration:** Makes changes available to all team members
+- **History:** Creates permanent record of what changed and why
+- **Deployment:** Streamlit Cloud auto-deploys from GitHub main branch
+
+### What to Commit
+
+✅ **Always commit:**
+- Code changes (Python scripts, analysis files)
+- Documentation updates (README.md, CLAUDE.md, etc.)
+- New results data (parquet files, CSV files)
+- Configuration changes
+
+❌ **Never commit:**
+- Temporary files (.pyc, __pycache__)
+- Personal notes or scratch files
+- Large binary files not needed for analysis
+- Sensitive credentials or API keys
+
+---
+
 ## Project Purpose
 
 This project analyzes stock price data to determine optimal put option writing strategies. The goal is to collect premium by writing put options while minimizing the risk of assignment.
