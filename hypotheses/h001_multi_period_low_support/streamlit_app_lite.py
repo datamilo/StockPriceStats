@@ -605,7 +605,7 @@ def main():
             if len(multi_break_clusters) > 0:
                 st.write("**Multi-Break Clusters (2+ consecutive breaks):**")
 
-                for cluster in sorted(multi_break_clusters, key=lambda x: x['num_breaks'], reverse=True):
+                for cluster in sorted(multi_break_clusters, key=lambda x: x['cluster_id']):
                     with st.expander(
                         f"🔴 Cluster #{cluster['cluster_id']}: {cluster['num_breaks']} breaks "
                         f"({cluster['start_date'].strftime('%Y-%m-%d')} to {cluster['end_date'].strftime('%Y-%m-%d')})"

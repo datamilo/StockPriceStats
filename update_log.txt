@@ -1,0 +1,269 @@
+2025-11-02 04:57:49,050 - INFO - ================================================================================
+2025-11-02 04:57:49,051 - INFO - FILTERING STOCK PRICE DATA TO RELEVANT STOCKS
+2025-11-02 04:57:49,051 - INFO - ================================================================================
+2025-11-02 04:57:49,051 - INFO - Loading stocks with options available...
+2025-11-02 04:57:49,071 - INFO - ✓ Found 68 stocks with options
+2025-11-02 04:57:49,071 - INFO - Loading price data...
+2025-11-02 04:57:49,524 - INFO - ✓ Loaded 685,762 records from price_data_all.parquet
+2025-11-02 04:57:49,524 - INFO -   - Columns: date, name, open, high, low, close, volume, average_price, trades, pct_change_close
+2025-11-02 04:57:49,584 - INFO -   - Total unique stocks: 2102
+2025-11-02 04:57:49,785 - INFO -   - Date range: 2000-01-03 to 2025-10-31
+2025-11-02 04:57:49,785 - INFO - Filtering data to 68 stocks...
+2025-11-02 04:57:50,079 - INFO - ✓ Filtering complete:
+2025-11-02 04:57:50,080 - INFO -   - Records: 685,762 → 359,051 (52.4% retained)
+2025-11-02 04:57:50,080 - INFO -   - Stocks: 2102 → 68
+2025-11-02 04:57:50,111 - INFO - Removing incomplete trading days...
+2025-11-02 04:57:50,190 - INFO - ✓ Removed 8,262 rows with incomplete OHLC data
+2025-11-02 04:57:50,191 - INFO -   - Records: 359,051 → 350,789
+2025-11-02 04:57:50,191 - INFO - Saving filtered data...
+2025-11-02 04:57:50,678 - INFO - ✓ Saved parquet: price_data_filtered.parquet (10.67 MB)
+2025-11-02 04:57:50,679 - INFO - 
+2025-11-02 04:57:50,679 - INFO - ================================================================================
+2025-11-02 04:57:50,679 - INFO - ✓ FILTERING COMPLETE!
+2025-11-02 04:57:50,679 - INFO - ================================================================================
+2025-11-02 04:57:50,679 - INFO - Filtered dataset contains:
+2025-11-02 04:57:50,679 - INFO -   - 350,789 records (complete trading days only)
+2025-11-02 04:57:50,711 - INFO -   - 68 unique stocks
+2025-11-02 04:57:50,793 - INFO -   - Date range: 2000-01-03 to 2025-10-31
+2025-11-02 04:57:50,793 - INFO - 
+2025-11-02 04:57:50,794 - INFO - Output file:
+2025-11-02 04:57:50,794 - INFO -   - price_data_filtered.parquet
+2025-11-02 04:57:50,794 - INFO - ================================================================================
+
+✓ Success! You can now use price_data_filtered.parquet for your analysis.
+================================================================================
+INCREMENTAL MULTI-PERIOD SUPPORT LEVEL ANALYSIS
+Appending new data to existing results (FAST!)
+================================================================================
+
+System Configuration:
+  CPU Cores Available: 8
+  Worker Processes: 7
+
+================================================================================
+FINDING LAST ANALYZED DATES
+================================================================================
+1-Month: Last analyzed date: 2025-10-29
+3-Month: Last analyzed date: 2025-10-29
+6-Month: Last analyzed date: 2025-10-29
+9-Month: Last analyzed date: 2025-10-29
+1-Year: Last analyzed date: 2025-10-29
+
+Will reprocess from: 2025-10-28 (including last analyzed date: 2025-10-29)
+
+================================================================================
+LOADING DATA
+================================================================================
+Loading price data from ../../price_data_filtered.parquet...
+✓ Loaded 350,789 total records for 68 stocks
+✓ Filtering to new data (after 2025-10-28): 198 new records
+
+================================================================================
+ANALYZING NEW DATA
+================================================================================
+
+================================================================================
+ANALYZING DATA: 1-Month LOW (30 days)
+Processing dates FROM: 2025-10-28 onwards
+================================================================================
+Using 7 worker processes...
+Processing 68 stocks with 2 wait times...
+  Progress: 10/68 stocks processed...
+  Progress: 20/68 stocks processed...
+  Progress: 30/68 stocks processed...
+  Progress: 40/68 stocks processed...
+  Progress: 50/68 stocks processed...
+  Progress: 60/68 stocks processed...
+✓ Generated 1,945 new test cases
+
+================================================================================
+APPENDING RESULTS
+================================================================================
+  Loading existing 1_month_detailed_results.parquet...
+  Saving updated 1_month_detailed_results.parquet...
+✓ Updated 1_month_detailed_results.parquet
+  - Old size: 2,938,390 rows
+  - New size: 2,939,695 rows
+  - Added: 1,945 rows
+
+================================================================================
+ANALYZING DATA: 3-Month LOW (90 days)
+Processing dates FROM: 2025-10-28 onwards
+================================================================================
+Using 7 worker processes...
+Processing 68 stocks with 4 wait times...
+  Progress: 10/68 stocks processed...
+  Progress: 20/68 stocks processed...
+  Progress: 30/68 stocks processed...
+  Progress: 40/68 stocks processed...
+  Progress: 50/68 stocks processed...
+  Progress: 60/68 stocks processed...
+✓ Generated 3,870 new test cases
+
+================================================================================
+APPENDING RESULTS
+================================================================================
+  Loading existing 3_month_detailed_results.parquet...
+  Saving updated 3_month_detailed_results.parquet...
+✓ Updated 3_month_detailed_results.parquet
+  - Old size: 5,637,240 rows
+  - New size: 5,639,835 rows
+  - Added: 3,870 rows
+
+================================================================================
+ANALYZING DATA: 6-Month LOW (180 days)
+Processing dates FROM: 2025-10-28 onwards
+================================================================================
+Using 7 worker processes...
+Processing 68 stocks with 6 wait times...
+/home/gustaf/StockPriceStats/hypotheses/h001_multi_period_low_support/multi_period_low_analysis_incremental.py:305: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  combined = pd.concat([existing, new_results], ignore_index=True, sort=False)
+  Progress: 10/68 stocks processed...
+  Progress: 20/68 stocks processed...
+  Progress: 30/68 stocks processed...
+  Progress: 40/68 stocks processed...
+  Progress: 50/68 stocks processed...
+  Progress: 60/68 stocks processed...
+✓ Generated 5,940 new test cases
+
+================================================================================
+APPENDING RESULTS
+================================================================================
+  Loading existing 6_month_detailed_results.parquet...
+  Saving updated 6_month_detailed_results.parquet...
+✓ Updated 6_month_detailed_results.parquet
+  - Old size: 8,475,210 rows
+  - New size: 8,479,170 rows
+  - Added: 5,940 rows
+
+================================================================================
+ANALYZING DATA: 9-Month LOW (270 days)
+Processing dates FROM: 2025-10-28 onwards
+================================================================================
+Using 7 worker processes...
+Processing 68 stocks with 6 wait times...
+/home/gustaf/StockPriceStats/hypotheses/h001_multi_period_low_support/multi_period_low_analysis_incremental.py:305: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  combined = pd.concat([existing, new_results], ignore_index=True, sort=False)
+  Progress: 10/68 stocks processed...
+  Progress: 20/68 stocks processed...
+  Progress: 30/68 stocks processed...
+  Progress: 40/68 stocks processed...
+  Progress: 50/68 stocks processed...
+  Progress: 60/68 stocks processed...
+✓ Generated 5,850 new test cases
+
+================================================================================
+APPENDING RESULTS
+================================================================================
+  Loading existing 9_month_detailed_results.parquet...
+  Saving updated 9_month_detailed_results.parquet...
+✓ Updated 9_month_detailed_results.parquet
+  - Old size: 8,740,720 rows
+  - New size: 8,744,620 rows
+  - Added: 5,850 rows
+
+================================================================================
+ANALYZING DATA: 1-Year LOW (365 days)
+Processing dates FROM: 2025-10-28 onwards
+================================================================================
+Using 7 worker processes...
+Processing 68 stocks with 6 wait times...
+/home/gustaf/StockPriceStats/hypotheses/h001_multi_period_low_support/multi_period_low_analysis_incremental.py:305: FutureWarning: The behavior of DataFrame concatenation with empty or all-NA entries is deprecated. In a future version, this will no longer exclude empty or all-NA columns when determining the result dtypes. To retain the old behavior, exclude the relevant entries before the concat operation.
+  combined = pd.concat([existing, new_results], ignore_index=True, sort=False)
+  Progress: 10/68 stocks processed...
+  Progress: 20/68 stocks processed...
+  Progress: 30/68 stocks processed...
+  Progress: 40/68 stocks processed...
+  Progress: 50/68 stocks processed...
+  Progress: 60/68 stocks processed...
+✓ Generated 5,760 new test cases
+
+================================================================================
+APPENDING RESULTS
+================================================================================
+  Loading existing 1_year_detailed_results.parquet...
+  Saving updated 1_year_detailed_results.parquet...
+✓ Updated 1_year_detailed_results.parquet
+  - Old size: 8,847,360 rows
+  - New size: 8,851,200 rows
+  - Added: 5,760 rows
+
+================================================================================
+✓ INCREMENTAL ANALYSIS COMPLETE!
+================================================================================
+
+Results have been appended to:
+  - 1_month_detailed_results.parquet
+  - 3_month_detailed_results.parquet
+  - 6_month_detailed_results.parquet
+  - 9_month_detailed_results.parquet
+  - 1_year_detailed_results.parquet
+
+
+╔==============================================================================╗
+║                                                                              ║
+║                 STOCKPRICESTATS - MASTER DATA UPDATE SCRIPT                  ║
+║                   (Updates H001 analysis with one command)                   ║
+║                                                                              ║
+╚==============================================================================╝
+
+================================================================================
+                               PRE-FLIGHT CHECKS                                
+================================================================================
+✓ Found newer price data in OneDrive
+  Copying from: /mnt/c/Users/Gustaf/OneDrive/OptionsData/price_data_all.parquet
+  ✓ Updated local copy
+✓ Using price_data_all.parquet (16.8 MB)
+✓ Found filter script
+✓ Found incremental analysis script
+
+================================================================================
+                   STEP: Filter price data to relevant stocks                   
+================================================================================
+
+✓ Filter price data to relevant stocks completed successfully!
+
+================================================================================
+               STEP: Analyze new data and append to H001 results                
+================================================================================
+
+✓ Analyze new data and append to H001 results completed successfully!
+
+================================================================================
+                               SYNCING TO GITHUB                                
+================================================================================
+Staging files for commit...
+  ✓ Staged price_data_all.parquet
+  ✓ Staged price_data_filtered.parquet
+  ✓ Staged hypotheses/h001_multi_period_low_support/1_month_detailed_results.parquet
+  ✓ Staged hypotheses/h001_multi_period_low_support/3_month_detailed_results.parquet
+  ✓ Staged hypotheses/h001_multi_period_low_support/6_month_detailed_results.parquet
+  ✓ Staged hypotheses/h001_multi_period_low_support/9_month_detailed_results.parquet
+  ✓ Staged hypotheses/h001_multi_period_low_support/1_year_detailed_results.parquet
+
+Committing changes...
+  ✓ Commit created
+Pushing to GitHub...
+  ✓ Pushed to origin/main
+
+================================================================================
+                   ✓ ALL UPDATES COMPLETE & SYNCED TO GITHUB!                   
+================================================================================
+
+The following files have been updated and pushed to GitHub:
+  ✓ price_data_all.parquet  - Latest price data
+  ✓ price_data_filtered.parquet  - Filtered stock price data (70 stocks)
+  ✓ 1_month_detailed_results.parquet  - H001 analysis results
+  ✓ 3_month_detailed_results.parquet  - H001 analysis results
+  ✓ 6_month_detailed_results.parquet  - H001 analysis results
+  ✓ 9_month_detailed_results.parquet  - H001 analysis results
+  ✓ 1_year_detailed_results.parquet  - H001 analysis results
+
+The Streamlit app will automatically use the updated data on next refresh.
+GitHub and Streamlit Cloud will auto-deploy the changes.
+
+To update again in the future:
+  1. Place a new price_data_all.parquet in the main folder
+  2. Run: python update_analysis_data.py
+  3. That's it! Everything else is automated.
+
