@@ -370,34 +370,7 @@ html_content = f"""<!DOCTYPE html>
         async function loadData() {{
             try {{
                 console.log('Loading parquet file...');
-
-                // Try multiple path options
-                const pathOptions = [
-                    '../../price_data_filtered.parquet',  // Relative to h001 directory
-                    '../price_data_filtered.parquet',     // One level up
-                    'price_data_filtered.parquet'         // Same directory as HTML
-                ];
-
-                let response = null;
-                let lastError = null;
-
-                for (const path of pathOptions) {{
-                    try {{
-                        console.log(`Trying path: ${{path}}`);
-                        response = await fetch(path);
-                        if (response.ok) {{
-                            console.log(`Successfully loaded from: ${{path}}`);
-                            break;
-                        }}
-                    }} catch (err) {{
-                        lastError = err;
-                        console.log(`Failed to load from ${{path}}: ${{err.message}}`);
-                    }}
-                }}
-
-                if (!response || !response.ok) {{
-                    throw new Error(`Failed to load parquet file from any path. Last error: ${{lastError?.message || response?.statusText}}`);
-                }}
+                const response = await fetch('price_data_filtered.parquet');
 
                 const arrayBuffer = await response.arrayBuffer();
                 const table = await arrow.Table.from(arrayBuffer);

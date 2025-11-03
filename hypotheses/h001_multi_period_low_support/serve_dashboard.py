@@ -37,15 +37,28 @@ class MyHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
             print(f"[{self.address_string()}] {format % args}")
 
 def main():
+    import shutil
+
     # Check if files exist
     if not HTML_FILE.exists():
         print(f"❌ Error: HTML file not found at {HTML_FILE}")
         return
 
     if not DATA_FILE.exists():
-        print(f"⚠️  Warning: Data file not found at {DATA_FILE}")
-        print(f"   Make sure price_data_filtered.parquet is in the parent directory")
+        print(f"❌ Error: Data file not found at {DATA_FILE}")
+        print(f"   Expected location: {DATA_FILE}")
         return
+
+    # Copy parquet file to h001 directory if not already there
+    LOCAL_DATA_FILE = SCRIPT_DIR / 'price_data_filtered.parquet'
+    if not LOCAL_DATA_FILE.exists():
+        print(f"📋 Copying data file to {SCRIPT_DIR}...")
+        try:
+            shutil.copy(DATA_FILE, LOCAL_DATA_FILE)
+            print(f"✅ Data file copied successfully")
+        except Exception as e:
+            print(f"❌ Error copying data file: {e}")
+            return
 
     # Change to script directory so server can serve files
     import os
