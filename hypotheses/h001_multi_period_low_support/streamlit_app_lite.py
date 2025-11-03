@@ -473,7 +473,9 @@ def main():
         template='plotly_white',
         height=600,
         hovermode='x unified',
-        margin=dict(l=0, r=0, t=40, b=0)
+        margin=dict(l=0, r=0, t=40, b=0),
+        yaxis=dict(autorange=True, fixedrange=False),
+        xaxis=dict(autorange=True, fixedrange=False)
     )
 
     # Display with proper config
