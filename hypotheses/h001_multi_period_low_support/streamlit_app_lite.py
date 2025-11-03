@@ -475,7 +475,7 @@ def main():
         hovermode='x unified',
         margin=dict(l=0, r=0, t=80, b=0),
         xaxis=dict(rangeslider=dict(visible=False)),
-        dragmode='pan'  # Pan mode for easier navigation
+        dragmode='zoom'  # Zoom mode for box selection
     )
 
     # Add range selector buttons for quick time period selection with automatic y-axis scaling
@@ -498,11 +498,107 @@ def main():
         )
     )
 
-    # Display chart
-    config = {'responsive': True, 'displayModeBar': True, 'displaylogo': False}
-    st.plotly_chart(fig, config=config, use_container_width=True)
+    # Create custom HTML with JavaScript for dynamic y-axis rescaling
+    import json
+    import streamlit.components.v1 as components
 
-    st.info("💡 **Tip:** Use the **quick selection buttons** (1m, 3m, 6m, 1y, All) above the chart for zoom with automatic y-axis scaling, or adjust the **date range filter** in the sidebar for custom periods.")
+    # Convert figure to JSON
+    fig_json = json.loads(fig.to_json())
+
+    # Create HTML with embedded Plotly and custom JavaScript
+    html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+        <style>
+            body {{
+                margin: 0;
+                padding: 0;
+            }}
+            #plotlyChart {{
+                width: 100%;
+                height: 100%;
+            }}
+        </style>
+    </head>
+    <body>
+        <div id="plotlyChart"></div>
+        <script>
+            var plotData = {json.dumps(fig_json['data'])};
+            var plotLayout = {json.dumps(fig_json['layout'])};
+            var config = {{responsive: true, displayModeBar: true, displaylogo: false}};
+
+            Plotly.newPlot('plotlyChart', plotData, plotLayout, config);
+
+            var chart = document.getElementById('plotlyChart');
+
+            // Function to calculate y-axis range based on visible x-range
+            function updateYAxis(xMin, xMax) {{
+                var yMin = Infinity;
+                var yMax = -Infinity;
+
+                plotData.forEach(function(trace) {{
+                    if (trace.x && trace.x.length > 0) {{
+                        for (var i = 0; i < trace.x.length; i++) {{
+                            var xDate = new Date(trace.x[i]);
+                            var xMinDate = new Date(xMin);
+                            var xMaxDate = new Date(xMax);
+
+                            if (xDate >= xMinDate && xDate <= xMaxDate) {{
+                                // Handle candlestick charts
+                                if (trace.type === 'candlestick') {{
+                                    if (trace.low && trace.low[i] !== null && trace.low[i] !== undefined) {{
+                                        yMin = Math.min(yMin, trace.low[i]);
+                                    }}
+                                    if (trace.high && trace.high[i] !== null && trace.high[i] !== undefined) {{
+                                        yMax = Math.max(yMax, trace.high[i]);
+                                    }}
+                                }}
+                                // Handle scatter/line charts
+                                else if (trace.y && trace.y[i] !== null && trace.y[i] !== undefined) {{
+                                    yMin = Math.min(yMin, trace.y[i]);
+                                    yMax = Math.max(yMax, trace.y[i]);
+                                }}
+                            }}
+                        }}
+                    }}
+                }});
+
+                // Add 5% padding
+                if (yMin !== Infinity && yMax !== -Infinity) {{
+                    var padding = (yMax - yMin) * 0.05;
+                    yMin = yMin - padding;
+                    yMax = yMax + padding;
+
+                    // Update y-axis without triggering another relayout event
+                    Plotly.relayout('plotlyChart', {{
+                        'yaxis.range': [yMin, yMax],
+                        'yaxis.autorange': false
+                    }});
+                }}
+            }}
+
+            // Listen for zoom/pan events
+            chart.on('plotly_relayout', function(eventdata) {{
+                // Check if x-axis range changed
+                if (eventdata['xaxis.range[0]'] !== undefined && eventdata['xaxis.range[1]'] !== undefined) {{
+                    updateYAxis(eventdata['xaxis.range[0]'], eventdata['xaxis.range[1]']);
+                }}
+                // Handle autorange reset
+                else if (eventdata['xaxis.autorange'] === true) {{
+                    Plotly.relayout('plotlyChart', {{
+                        'yaxis.autorange': true
+                    }});
+                }}
+            }});
+        </script>
+    </body>
+    </html>
+    """
+
+    # Display using components.html
+    components.html(html_code, height=650, scrolling=False)
 
     # Support level statistics
     st.subheader("Support Level Statistics")
