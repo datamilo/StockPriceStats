@@ -2,21 +2,19 @@
 
 > **📊 START HERE:** Choose your preferred analysis tool:
 >
-> **Option 1: Streamlit App (Recommended)**
+> **Option 1: Streamlit App (Recommended for comprehensive analysis)**
 > ```bash
 > streamlit run streamlit_app_lite.py
 > ```
 > Then open your browser to `http://localhost:8501`
 >
-> **Option 2: Standalone HTML Dashboard**
+> **Option 2: Standalone HTML Dashboard (Recommended for quick browsing)**
 > ```bash
-> # Self-contained version (no dependencies)
+> # Self-contained version (no dependencies needed)
 > open consecutive_breaks_dashboard.html
->
-> # OR lightweight version with web server
-> python serve_dashboard.py
+> # or just double-click the file in your file explorer
 > ```
-> Then open your browser to `http://localhost:8000`
+> Works offline, no installation required!
 
 ## Hypothesis & Conclusion
 
@@ -72,28 +70,16 @@
   - Performance statistics
   - Consecutive break clustering analysis
 
-#### **Standalone HTML Dashboards** (Alternative)
-Two versions available for different use cases:
+#### **Standalone HTML Dashboard** (Alternative)
 
-- **`consecutive_breaks_dashboard.html`** (15MB)
+- **`consecutive_breaks_dashboard.html`** (14.2 MB)
   - ✅ Fully self-contained, no dependencies
   - ✅ All data embedded in one HTML file
   - ✅ Just open in browser (works offline)
   - ✅ Perfect for sharing/archiving
-  - ❌ Large file size
-
-- **`consecutive_breaks_dashboard_lite.html`** (37KB)
-  - ✅ Tiny file size (400x smaller!)
-  - ✅ Loads data dynamically from parquet
-  - ✅ Better for GitHub storage
-  - ❌ Requires web server to run (CORS restriction)
-  - ✅ Use `serve_dashboard.py` to run locally
-
-- **`serve_dashboard.py`** - Simple web server for lightweight dashboard
-  - Solves browser CORS restrictions
-  - Auto-opens dashboard in browser
-  - Just run: `python serve_dashboard.py`
-  - Opens on `http://localhost:8000`
+  - ✅ No setup required - double-click to use
+  - Interactive features: time range buttons, zoom, pan, dynamic y-axis scaling
+  - Same data as Streamlit app but lighter experience
 
 ### Analysis Scripts
 - **`multi_period_low_analysis.py`** - Full re-analysis (for first-time setup)
@@ -132,6 +118,85 @@ Then open `http://localhost:8501` in your browser.
 
 ### On Streamlit Cloud
 If deployed, access the live app at the provided URL (no installation needed).
+
+---
+
+## HTML Dashboard Guide
+
+The standalone **`consecutive_breaks_dashboard.html`** provides a lightweight, offline-capable interface with the same analysis as the Streamlit app.
+
+### How to Use
+
+**Opening the Dashboard:**
+1. Simply double-click `consecutive_breaks_dashboard.html` in your file explorer, OR
+2. Right-click → Open with → Your web browser
+
+**No installation or setup required!**
+
+### Dashboard Features
+
+**Top Controls:**
+- **Stock Selector:** Choose from 68 Nordic stocks
+- **Rolling Low Period:** Select 30d (1M), 90d (3M), 180d (6M), 270d (9M), or 365d (1Y)
+- **Max Days Between Breaks:** Adjust clustering sensitivity (default: 30 days)
+
+**Main Chart - Support Breaks Timeline**
+- **Candlestick chart:** Daily price action (Open, High, Low, Close)
+- **Blue dotted line:** Rolling low support level for selected period
+- **Red dots:** Dates when support broke (new lower low identified)
+- **Dynamic Y-axis:** Automatically scales to fit visible data when using time buttons
+- **Interactive controls:**
+  - **Time Range Buttons:** Quick navigation (All Data, 1Y, 6M, 3M, 1M)
+  - **Box Zoom:** Click and drag on chart to zoom into specific area
+  - **Pan:** Click and drag to move around the chart
+  - **Hover:** See detailed values when hovering over prices
+
+**Break Cluster Distribution Chart**
+- Shows how many clusters have 1 break, 2 breaks, 3 breaks, etc.
+- Colored bars indicate cluster intensity (yellow=1 break, orange=2-3, red=4+)
+- Helps understand volatility patterns
+
+**Key Metrics Cards**
+- Total support breaks identified
+- Total clusters found
+- Number of multi-break clusters (volatility events)
+- Maximum consecutive breaks in a cluster
+
+**Cluster Statistics**
+- Average duration of multi-break clusters
+- Average gap between breaks in clusters
+- Shortest gap observed (tightest clustering)
+
+**Support Break Statistics**
+- Total breaks and stability percentage
+- Days since last break
+- Average days until support breaks
+- Downside risk when breaks occur
+- Break patterns and frequency
+
+**All Break Clusters Details**
+- Expandable list of every cluster found
+- Duration, gaps, and total price drop
+- Individual break dates with drop magnitudes
+- Cluster severity indicators (🔴 = multi-break, 🟡 = single)
+
+### Interaction Tips
+
+**For Fast Browsing:**
+1. Click time range buttons (1M, 3M, 6M, 1Y) to jump to periods of interest
+2. Look at the cluster distribution chart for volatility hot spots
+3. Expand specific clusters to see exact break patterns
+
+**For Detailed Analysis:**
+1. Use box zoom (click-drag on chart) to examine specific periods closely
+2. Watch how the y-axis rescales when you click time buttons
+3. Compare cluster statistics across different rolling periods
+4. Study individual break magnitudes in the cluster details
+
+**For Offline Use:**
+- Works without internet connection (all data embedded)
+- Perfect for analysis on the go
+- Share the file via email - recipient can open it without any software
 
 ---
 
@@ -427,6 +492,22 @@ For comprehensive update instructions, troubleshooting, and examples:
 
 ---
 
-*Last Updated: 2025-10-22*
-*Status: H001 complete with Streamlit web app*
+*Last Updated: 2025-11-03*
+*Status: H001 complete with Streamlit app + interactive HTML dashboard*
 *Data Current Through: 2025-10-22*
+
+## Recent Updates (2025-11-03)
+
+### HTML Dashboard Enhancements
+- ✅ Added rolling low blue dotted line visualization to match Streamlit app
+- ✅ Added time range preset buttons (All Data, 1Y, 6M, 3M, 1M) for quick navigation
+- ✅ Implemented dynamic y-axis scaling that adjusts to visible data
+- ✅ Increased chart interactivity with box zoom and pan controls
+- ✅ Removed rangeslider for cleaner interface
+- ✅ Improved chart responsiveness and visibility (600px height)
+
+### Dashboard is Now Feature-Complete
+- Same data and analysis as Streamlit app
+- No dependencies or installation required
+- Works completely offline
+- Perfect for sharing and quick analysis
