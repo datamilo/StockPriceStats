@@ -475,10 +475,10 @@ def main():
         hovermode='x unified',
         margin=dict(l=0, r=0, t=40, b=0),
         xaxis=dict(rangeslider=dict(visible=False)),
-        dragmode='zoom'
+        dragmode='pan'  # Pan mode for easier navigation
     )
 
-    # Add range selector buttons for quick time period selection
+    # Add range selector buttons for quick time period selection with automatic y-axis scaling
     fig.update_xaxes(
         rangeselector=dict(
             buttons=list([
@@ -495,10 +495,11 @@ def main():
         )
     )
 
-    # Display with proper config
-    # Note: Plotly candlestick charts automatically adjust y-axis to visible data when zooming on x-axis
+    # Display chart
     config = {'responsive': True, 'displayModeBar': True, 'displaylogo': False}
     st.plotly_chart(fig, config=config, use_container_width=True)
+
+    st.info("💡 **Tip:** Use the **quick selection buttons** (1m, 3m, 6m, 1y, All) above the chart for zoom with automatic y-axis scaling, or adjust the **date range filter** in the sidebar for custom periods.")
 
     # Support level statistics
     st.subheader("Support Level Statistics")
