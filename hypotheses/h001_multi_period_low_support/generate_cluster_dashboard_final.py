@@ -310,6 +310,16 @@ html_content = f"""<!DOCTYPE html>
             </div>
 
             <div class="control-group">
+                <label for="dateFilterFrom">Date Range Filter From:</label>
+                <input type="date" id="dateFilterFrom" value="">
+            </div>
+
+            <div class="control-group">
+                <label for="dateFilterTo">Date Range Filter To:</label>
+                <input type="date" id="dateFilterTo" value="">
+            </div>
+
+            <div class="control-group">
                 <label for="periodSelect">Rolling Low Period:</label>
                 <select id="periodSelect">
                     <option value="30">1-Month (30 days)</option>
@@ -365,6 +375,52 @@ html_content = f"""<!DOCTYPE html>
         let currentData = null;
         let currentBreaks = null;
         let currentClusters = null;
+        let dateFilterFrom = null;
+        let dateFilterTo = null;
+
+        // Initialize date range filters with full data range
+        function initializeDateFilters() {{
+            const stockData = STOCK_DATA[currentStock];
+            if (!stockData) return;
+
+            const minDate = stockData.dates[0];
+            const maxDate = stockData.dates[stockData.dates.length - 1];
+
+            document.getElementById('dateFilterFrom').min = minDate;
+            document.getElementById('dateFilterFrom').max = maxDate;
+            document.getElementById('dateFilterFrom').value = minDate;
+
+            document.getElementById('dateFilterTo').min = minDate;
+            document.getElementById('dateFilterTo').max = maxDate;
+            document.getElementById('dateFilterTo').value = maxDate;
+
+            dateFilterFrom = new Date(minDate);
+            dateFilterTo = new Date(maxDate);
+        }}
+
+        // Filter data based on date range
+        function filterDataByDate(data, fromDate, toDate) {{
+            const filtered = {{
+                dates: [],
+                open: [],
+                high: [],
+                low: [],
+                close: []
+            }};
+
+            for (let i = 0; i < data.dates.length; i++) {{
+                const date = new Date(data.dates[i]);
+                if (date >= fromDate && date <= toDate) {{
+                    filtered.dates.push(data.dates[i]);
+                    filtered.open.push(data.open[i]);
+                    filtered.high.push(data.high[i]);
+                    filtered.low.push(data.low[i]);
+                    filtered.close.push(data.close[i]);
+                }}
+            }}
+
+            return filtered;
+        }}
 
         // Calculate rolling low
         function calculateRollingLow(data, periodDays) {{
@@ -911,9 +967,22 @@ html_content = f"""<!DOCTYPE html>
             const stockData = STOCK_DATA[currentStock];
             if (!stockData) return;
 
+            // Get date filter values
+            const filterFromStr = document.getElementById('dateFilterFrom').value;
+            const filterToStr = document.getElementById('dateFilterTo').value;
+
+            if (filterFromStr && filterToStr) {{
+                dateFilterFrom = new Date(filterFromStr);
+                dateFilterTo = new Date(filterToStr);
+            }}
+
             maxGapDays = parseInt(document.getElementById('maxGap').value);
 
-            const fullData = calculateRollingLow(stockData, currentPeriod);
+            // Filter data by date range first
+            const filteredRawData = filterDataByDate(stockData, dateFilterFrom, dateFilterTo);
+
+            // Then calculate rolling low on filtered data
+            const fullData = calculateRollingLow(filteredRawData, currentPeriod);
             currentData = fullData;
             currentBreaks = analyzeSupportBreaks(fullData);
             currentClusters = analyzeConsecutiveBreaks(currentBreaks, maxGapDays);
@@ -982,8 +1051,12 @@ html_content = f"""<!DOCTYPE html>
         // Event listeners
         document.getElementById('stockSelect').addEventListener('change', function() {{
             currentStock = this.value;
+            initializeDateFilters();
             updateDisplay();
         }});
+
+        document.getElementById('dateFilterFrom').addEventListener('change', updateDisplay);
+        document.getElementById('dateFilterTo').addEventListener('change', updateDisplay);
 
         document.getElementById('periodSelect').addEventListener('change', function() {{
             currentPeriod = parseInt(this.value);
@@ -1003,6 +1076,7 @@ html_content = f"""<!DOCTYPE html>
         }});
 
         // Initialize
+        initializeDateFilters();
         updateDisplay();
     </script>
 </body>
