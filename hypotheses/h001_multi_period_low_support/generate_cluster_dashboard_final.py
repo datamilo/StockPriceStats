@@ -582,6 +582,16 @@ html_content = f"""<!DOCTYPE html>
 
             const trace2 = {{
                 type: 'scatter',
+                mode: 'lines',
+                x: data.map(d => d.date),
+                y: data.map(d => d.rolling_low),
+                name: 'Rolling Low',
+                line: {{ color: 'blue', width: 2, dash: 'dash' }},
+                hovertemplate: '<b>%{{x|%Y-%m-%d}}</b><br>Rolling Low: %{{y:.2f}} kr<extra></extra>'
+            }};
+
+            const trace3 = {{
+                type: 'scatter',
                 mode: 'markers',
                 x: breaks.map(b => b.date),
                 y: breaks.map(b => b.new_support),
@@ -606,7 +616,7 @@ html_content = f"""<!DOCTYPE html>
                 margin: {{ l: 50, r: 50, t: 60, b: 50 }}
             }};
 
-            Plotly.newPlot('chart', [trace1, trace2], layout, {{
+            Plotly.newPlot('chart', [trace1, trace2, trace3], layout, {{
                 responsive: true,
                 displayModeBar: true,
                 displaylogo: false
