@@ -465,7 +465,7 @@ def main():
 
         st.write(f"**Supports Broken:** {len(breaks)} dates where rolling low decreased (new support level)")
 
-    # Update layout with extra top margin for range selector buttons
+    # Update layout
     fig.update_layout(
         title=f"{selected_stock} - {period_name} Rolling Low Support Levels",
         yaxis_title="Price (kr)",
@@ -473,12 +473,13 @@ def main():
         template='plotly_white',
         height=600,
         hovermode='x unified',
-        margin=dict(l=0, r=0, t=100, b=0),  # Increased top margin to 100 for buttons
+        margin=dict(l=0, r=0, t=80, b=0),
         xaxis=dict(rangeslider=dict(visible=False)),
         dragmode='pan'  # Pan mode for easier navigation
     )
 
     # Add range selector buttons for quick time period selection with automatic y-axis scaling
+    # Position buttons on the right side to avoid overlapping with chart title
     fig.update_xaxes(
         rangeselector=dict(
             buttons=list([
@@ -490,10 +491,10 @@ def main():
             ]),
             bgcolor="lightgray",
             activecolor="gray",
-            x=0,
-            y=1.15,  # Position above the title
-            xanchor='left',
-            yanchor='top'
+            x=1.0,  # Position on the right
+            y=1.0,
+            xanchor='right',
+            yanchor='bottom'
         )
     )
 
