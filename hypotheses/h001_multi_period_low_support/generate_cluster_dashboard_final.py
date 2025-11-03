@@ -926,6 +926,29 @@ html_content = f"""<!DOCTYPE html>
             displayBreakStatistics(breakStats);
         }}
 
+        // Calculate y-axis range for visible data
+        function calculateYAxisRange(xMin, xMax) {{
+            let yMin = Infinity;
+            let yMax = -Infinity;
+
+            // Find min and max of both price highs/lows and rolling low within visible range
+            for (let i = 0; i < currentData.length; i++) {{
+                const date = new Date(currentData[i].date);
+                if (date >= xMin && date <= xMax) {{
+                    // Consider both price range and rolling low
+                    yMin = Math.min(yMin, currentData[i].low, currentData[i].rolling_low || Infinity);
+                    yMax = Math.max(yMax, currentData[i].high, currentData[i].rolling_low || -Infinity);
+                }}
+            }}
+
+            if (yMin !== Infinity && yMax !== -Infinity) {{
+                // Add 5% padding on both sides
+                const padding = (yMax - yMin) * 0.05;
+                return [yMin - padding, yMax + padding];
+            }}
+            return null;
+        }}
+
         // Time range handler
         function setTimeRange(days) {{
             const chartDiv = document.getElementById('chart');
@@ -939,9 +962,21 @@ html_content = f"""<!DOCTYPE html>
                 startDate.setDate(startDate.getDate() - days);
             }}
 
-            Plotly.relayout('chart', {{
-                'xaxis.range': [startDate, lastDate]
-            }});
+            // Calculate y-axis range for the selected time period
+            const yRange = calculateYAxisRange(startDate, lastDate);
+
+            if (yRange) {{
+                Plotly.relayout('chart', {{
+                    'xaxis.range': [startDate, lastDate],
+                    'yaxis.range': yRange,
+                    'yaxis.autorange': false
+                }});
+            }} else {{
+                Plotly.relayout('chart', {{
+                    'xaxis.range': [startDate, lastDate],
+                    'yaxis.autorange': true
+                }});
+            }}
         }}
 
         // Event listeners
