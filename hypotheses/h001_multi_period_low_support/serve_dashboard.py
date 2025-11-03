@@ -67,10 +67,15 @@ def main():
     print("Press Ctrl+C to stop the server")
     print("=" * 60)
 
-    # Open browser automatically after a short delay
+    # Open browser automatically after a short delay (if available)
     def open_browser():
         time.sleep(1)  # Give server time to start
-        webbrowser.open(f'http://localhost:{PORT}/consecutive_breaks_dashboard_lite.html')
+        try:
+            webbrowser.open(f'http://localhost:{PORT}/consecutive_breaks_dashboard_lite.html')
+        except Exception as e:
+            # Browser not available (headless environment), just print URL
+            print(f"\n🌐 Browser not available - open manually:")
+            print(f"   http://localhost:{PORT}/consecutive_breaks_dashboard_lite.html\n")
 
     import threading
     thread = threading.Thread(target=open_browser, daemon=True)
