@@ -41,9 +41,10 @@ env/
 # Old/legacy files
 hypotheses/*/OLD/
 
-# Data (if too large, comment out if you want to upload)
-# .parquet files are included for Streamlit Cloud
-# but you can exclude them here if you prefer
+# Data files - DO NOT COMMIT
+# These are generated from source data and can be regenerated
+*.csv
+*.parquet
 
 # Cache
 .cache/
