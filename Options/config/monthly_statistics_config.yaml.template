@@ -1,0 +1,105 @@
+# Monthly Statistics and Volatility Configuration
+# Configuration for monthly maintenance scripts that generate:
+# 1. Stocks_Monthly_Data.csv - Monthly OHLC statistics
+# 2. Stock_Events_Volatility_Data.csv - Reporting day volatility
+
+# Data source paths
+data_sources:
+  # Reference data directory (stores mapping files and event history)
+  reference_data_dir: "C:/Users/Gustaf/OneDrive/OptionsData/MonthlyStatisticsAndVolatility"
+
+  # Price data (parquet preferred, CSV as fallback)
+  price_data_parquet: "C:/Users/Gustaf/OneDrive/OptionsData/price_data_all.parquet"
+  price_data_csv: "C:/Users/Gustaf/OneDrive/Nasdaq_Stock_Data/price_data_all.csv"
+
+  # Reference data files (in reference_data_dir)
+  options_available_file: "nasdaq_options_available.csv"
+  mfn_links_file: "MFN_Links_All_Stocks.csv"
+  historical_events_file: "All_Stocks_Previous_Events.csv"
+  name_mapping_file: "mfn_nordnet_stock_names.csv"
+
+# Output paths
+output_paths:
+  # OneDrive output (primary storage)
+  onedrive_dir: "C:/Users/Gustaf/OneDrive/OptionsData"
+
+  # GitHub output (public distribution)
+  github_dir: "C:/Users/Gustaf/Documents/GitHub/put-options-se/Data"
+
+  # Output filenames
+  monthly_stats_file: "Stocks_Monthly_Data.csv"
+  volatility_file: "Stock_Events_Volatility_Data.csv"
+
+# Web scraping settings (for volatility data)
+web_scraping:
+  # Enable/disable web scraping (can be overridden by --skip-scraping flag)
+  enabled: true
+
+  # MFN.se stock list IDs to scrape
+  mfn_list_ids:
+    - "35207"
+    - "35208"
+    - "35209"
+    - "919325"
+    - "35198"
+    - "29934"
+    - "5700306"
+    - "4680265"
+
+  # HTTP request settings
+  request_timeout: 30
+  retry_delay: 1.0
+  max_retries: 3
+
+# Monthly statistics settings
+monthly_statistics:
+  # Minimum year to include (filters data before this year)
+  min_year: 2000
+
+  # Stocks to exclude from analysis
+  excluded_stocks:
+    - "Fingerprint Cards AB ser. B"
+    - "Ratos AB ser. B"
+    - "Autoliv Inc. SDB"
+
+  # Exclude stocks containing these strings
+  excluded_contains:
+    - "Fortnox"
+
+  # Automatically exclude current incomplete month
+  exclude_current_month: true
+
+# Reporting day volatility settings
+reporting_volatility:
+  # Event types to include (case-insensitive regex)
+  event_type_filter: "rapport|bokslut"
+
+  # Event type standardization
+  standardize_events:
+    "X-dag": "X-dag"
+    "Split": "Split"
+    "Inlösen": "Inlosen"
+
+# File formats
+file_formats:
+  # Delimiter for CSV files
+  csv_separator: "|"
+
+  # Date format for output
+  date_format: "%Y-%m-%d"
+
+  # Decimal places for percentages
+  percentage_decimals: 6
+
+# Logging settings
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(levelname)s - %(message)s"
+
+# Backup settings
+backup:
+  # Backup reference data before updating
+  backup_before_scraping: true
+
+  # Keep backups for this many days
+  retention_days: 7

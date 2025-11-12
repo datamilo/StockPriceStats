@@ -232,6 +232,77 @@ Every hypothesis folder contains:
 
 ---
 
+## Probability Validation Report
+
+**Location:** `Options/probability_validation_report.html`
+
+This interactive HTML report validates the accuracy of 5 different probability prediction methods by comparing predicted probabilities against actual outcomes for 934,643 expired options (2024-2025).
+
+### Key Features
+
+**📊 Interactive Calibration Analysis**
+- Filter by individual stock or view all stocks combined
+- See how well each prediction method performs for specific stocks
+- Identify which stocks have models that are well-calibrated for put option writing
+
+**📅 Days-to-Expiry (DTE) Analysis**
+- Analyze how prediction accuracy varies based on time to expiration
+- **IMPORTANT: Uses CALENDAR DAYS (not business days)** between prediction date and expiry
+- 7 granular bins for detailed analysis:
+  - 0-3 days (very short-term)
+  - 4-7 days
+  - 8-14 days
+  - 15-21 days
+  - 22-28 days
+  - 29-35 days
+  - 35+ days (longer-term predictions)
+- Dual filtering: Select stock AND days-to-expiry range simultaneously
+
+**🏆 Winner: Weighted Average Method**
+- Best performance across Brier Score, AUC-ROC, and calibration error
+- Exceptional calibration: Only 0.32% average error
+- 934,643 validated predictions provide statistically significant results
+
+### How to Use
+
+1. **Open the Report:**
+   - Double-click `Options/probability_validation_report.html` to open in browser
+   - No installation required - fully self-contained
+
+2. **Explore Overall Performance:**
+   - View executive summary with key metrics
+   - Compare performance metrics across all 5 methods
+   - Review detailed calibration analysis
+
+3. **Stock-Level Analysis:**
+   - Use "Select Stock" dropdown in Calibration Analysis section
+   - Choose from 75 unique stocks
+   - See calibration curves specific to that stock
+
+4. **Days-to-Expiry Analysis:**
+   - Use stock AND DTE bin dropdowns in "Calibration by Days to Expiry" section
+   - Examples:
+     - "How accurate are predictions for Volvo with 0-3 days to expiry?"
+     - "Do longer-term predictions (35+ days) work better for all stocks vs individual stocks?"
+     - "Which stocks have better calibration for very short-term (0-3 days) options?"
+
+### Technical Details
+
+**5 Prediction Methods Evaluated:**
+1. **Weighted Average** - Brier-score weighted combination of all methods
+2. **Bayesian Calibrated** - Bayesian isotonic calibration with binning
+3. **Original Black-Scholes** - Standard Black-Scholes probability (filtered to ≥50% prob)
+4. **Bias Corrected** - Per-bin bias correction based on historical accuracy
+5. **Historical IV** - Historical implied volatility accuracy tables
+
+**Key Metrics Explained:**
+- **Brier Score:** Measures accuracy (0=perfect, 1=worst). Lower is better.
+- **AUC-ROC:** Ability to discriminate between outcomes (0.5=random, 1=perfect). Higher is better.
+- **Log Loss:** Penalizes confident wrong predictions. Lower is better.
+- **Expected Calibration Error (ECE):** Average difference between predicted and actual rates. Lower is better.
+
+---
+
 ## Future Hypotheses (Planned)
 
 ### H002: Multi-Year Lows
@@ -349,6 +420,7 @@ git push origin main
 | Component | Location | Description |
 |-----------|----------|-------------|
 | **Project Overview** | This file | High-level summary |
+| **Probability Validation** | `Options/probability_validation_report.html` | Interactive report with stock & DTE filtering |
 | **H001 Dashboard** | `hypotheses/h001_multi_period_low_support/multi_period_dashboard.html` | Interactive results viewer |
 | **H001 Details** | `hypotheses/h001_multi_period_low_support/METHODOLOGY_AND_FINDINGS.md` | Comprehensive analysis |
 | **Data Filtering** | `filter_relevant_stocks.py` | Script to filter dataset |
@@ -356,7 +428,7 @@ git push origin main
 
 ---
 
-*Last Updated: 2025-10-22*
-*Active Hypotheses: 1*
-*Status: H001 complete and validated with Streamlit app*
+*Last Updated: 2025-11-12*
+*Active Components: H001 hypothesis + Probability Validation Report*
+*Status: H001 complete; Validation Report with stock & DTE filtering active*
 *Data Workflow: Fully automated with incremental updates*

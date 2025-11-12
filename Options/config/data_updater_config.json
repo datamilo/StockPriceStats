@@ -1,0 +1,63 @@
+{
+  "api_settings": {
+    "nordnet": {
+      "base_url": "https://www.nordnet.se/api/2/instrument_search/query/stocklist",
+      "batch_size": 100,
+      "rate_limit_delay": 1.0,
+      "timeout": 30
+    },
+    "nasdaq": {
+      "base_url": "https://api.nasdaq.com/api/nordic/instruments",
+      "batch_size": 8,
+      "rate_limit_delay": 0.5,
+      "timeout": 30
+    },
+    "stock_download": {
+      "time_cutoff": "17:30",
+      "timezone": "Europe/Stockholm",
+      "primary_source": "nordnet",
+      "secondary_source": "nasdaq",
+      "enable_time_based_selection": true,
+      "nasdaq_retry_interval_minutes": 15,
+      "nasdaq_min_stocks_threshold": 40
+    }
+  },
+  "retry_settings": {
+    "max_retries": 2,
+    "base_delay": 60,
+    "max_delay": 1800,
+    "exponential_backoff": true,
+    "retry_on_http_errors": [429, 500, 502, 503, 504]
+  },
+  "data_requirements": {
+    "require_same_day_options": true,
+    "require_same_day_stocks": false,
+    "max_data_age_hours": 24
+  },
+  "file_paths": {
+    "input_folder": "input/",
+    "stock_data_file": "price_data_all",
+    "stock_data_format": "parquet",
+    "stock_data_csv_backup": true,
+    "options_data_file": "All_Options_Data",
+    "options_data_format": "parquet",
+    "options_data_csv_backup": true,
+    "instrument_ids_file": "Instrument_IDs.csv",
+    "nasdaq_mapping_file": "nasdaq_nordnet_stock_names.csv",
+    "last_updated_file": "last_updated.json"
+  },
+  "safety_settings": {
+    "backup_before_update": true,
+    "validate_data_integrity": true,
+    "backup_retention_days": 3,
+    "min_records_threshold": {
+      "stocks": 100,
+      "options": 1000
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "log_file": "data_updater.log",
+    "max_log_size_mb": 10
+  }
+}

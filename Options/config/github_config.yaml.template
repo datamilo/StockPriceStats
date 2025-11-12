@@ -1,0 +1,72 @@
+# GitHub Upload Configuration
+# This file contains all settings for uploading output files to GitHub
+#
+# SECURITY NOTE: Never commit this file with real access token to public repos!
+# Add to .gitignore: config/github_config.yaml
+
+github:
+  # GitHub personal access token (classic)
+  # Generate at: https://github.com/settings/tokens
+  # Required permissions: repo (Full control of private repositories)
+  access_token: "YOUR_GITHUB_TOKEN_HERE"
+
+  # Repository settings
+  username: "datamilo"
+  repo_name: "put-options-se"
+  branch_name: "main"
+
+# Files to upload
+# Each entry maps a local file path (relative to project root) to GitHub path (relative to repo root)
+files_to_upload:
+  - local_path: "output/data.csv"
+    github_path: "data/data.csv"
+    commit_message: "Updated options analysis data"
+    description: "Main options analysis output (67 fields)"
+
+  - local_path: "output/IV_PotentialDecline.csv"
+    github_path: "data/IV_PotentialDecline.csv"
+    commit_message: "Updated IV Potential Decline analysis"
+    description: "IV-based put safety analysis (16 fields)"
+
+  - local_path: "input/last_updated.json"
+    github_path: "data/last_updated.json"
+    commit_message: "Updated timestamp metadata"
+    description: "Last update timestamp and metadata"
+
+# Upload behavior settings
+upload_settings:
+  # Enable/disable GitHub uploads
+  enabled: true
+
+  # Ask for confirmation before uploading (recommended for manual runs)
+  ask_confirmation: true
+
+  # Skip upload if file doesn't exist (true) or raise error (false)
+  skip_missing_files: true
+
+  # Create last_updated.json automatically if it doesn't exist
+  # NOTE: Disabled - data_updater.py already creates this file in legacy format
+  auto_create_metadata: false
+
+  # Metadata to include in last_updated.json
+  metadata_fields:
+    - "timestamp"           # ISO format timestamp
+    - "date"               # YYYY-MM-DD format
+    - "data_csv_rows"      # Number of options in data.csv
+    - "iv_csv_rows"        # Number of options in IV_PotentialDecline.csv (if exists)
+    - "script_version"     # Version identifier
+
+# Rate limiting and error handling
+error_handling:
+  # Retry failed uploads (recommended for network issues)
+  max_retries: 3
+
+  # Seconds to wait between retries
+  retry_delay: 5
+
+  # Continue if one file fails (true) or stop entire upload (false)
+  continue_on_error: true
+
+  # Log upload results
+  log_to_file: true
+  log_path: "logs/github_upload.log"
