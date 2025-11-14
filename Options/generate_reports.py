@@ -342,7 +342,7 @@ df_full['StrikeDate'] = pd.to_datetime(df_full['StrikeDate'], errors='coerce')
 df_full['Update_date'] = pd.to_datetime(df_full['Update_date'], errors='coerce')
 df_full['DaysToExpiry'] = (df_full['StrikeDate'] - df_full['Update_date']).dt.days
 
-unique_stocks = sorted([s for s in df_full['Name'].unique() if s != 'nan'])
+unique_stocks = sorted([s for s in df_full['Name'].unique() if pd.notna(s)])
 
 # Prepare stock calibration data
 stock_calibration_data = {}
