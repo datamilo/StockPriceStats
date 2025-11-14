@@ -1,8 +1,29 @@
-# Options Analysis - Consolidated Weekly Workflow
+# Options Analysis - Consolidated Workflow
 
-This folder contains the consolidated workflow for probability validation and historical recovery analysis.
+This folder contains consolidated scripts for probability data generation, validation, and analysis.
 
-## Quick Start - Weekly Report Generation
+## Two Simple Workflows
+
+### Workflow 1: Generate Complete Probability History (Data Setup)
+
+When you have new probability data or need to regenerate the enriched dataset:
+
+```bash
+python generate_probability_history_complete.py
+```
+
+This consolidates TWO steps into ONE command:
+- ✅ Generates base probability predictions (Step 1)
+- ✅ Enriches with strike & price data (Step 2)
+- ✅ Outputs: `probability_history_FULL_HISTORICAL_WITH_EXPIRY_PRICE.csv`
+
+**Run when:** You have new raw probability data from OneDrive and need to enrich it
+
+---
+
+### Workflow 2: Generate Analysis Reports (Weekly)
+
+Once you have the enriched CSV file:
 
 ```bash
 python generate_reports.py
@@ -12,6 +33,8 @@ This single command:
 - ✅ Validates probability predictions against actual outcomes
 - ✅ Analyzes historical probability recovery patterns
 - ✅ Generates both interactive HTML reports
+
+**Run when:** You want to update analysis reports with current data
 
 **Output:** Two self-contained HTML reports ready to share or analyze
 
@@ -50,17 +73,43 @@ Examines options that previously peaked at high probability levels (80%+) but ha
 ## Complete Workflow
 
 ### Prerequisites
-- **Python 3.7+** with: pandas, numpy, plotly, scikit-learn
-- **Data file:** `probability_history_FULL_HISTORICAL_WITH_EXPIRY_PRICE.csv`
 
-### Running the Complete Analysis
+**For Report Generation:**
+- Python 3.7+ with: pandas, numpy, plotly, scikit-learn
+- Data file: `probability_history_FULL_HISTORICAL_WITH_EXPIRY_PRICE.csv` (use Workflow 1 to generate)
+
+**For Data Generation:**
+- Python 3.7+ with: pandas, numpy, scipy, joblib, requests, beautifulsoup4, tqdm
+- OneDrive data files: `All_Options_Data.parquet`, `price_data_all.parquet`, `Implied_Volatility_Historical_ALL.parquet`
+- Weekly maintenance calibration files in: `OneDrive/OptionsData/WeeklyMaintenance/`
+
+### Running Workflow 1: Data Generation
+
+```bash
+cd ~/StocksOptionsStats/Options
+python generate_probability_history_complete.py
+```
+
+**What it does:**
+- Step 1: Generates base probability predictions (all 5 methods)
+- Step 2: Enriches with strike prices and stock prices at update/expiry
+- Output: `probability_history_FULL_HISTORICAL_WITH_EXPIRY_PRICE.csv`
+
+**Processing time:** Variable (depends on data size; Step 1 is computationally intensive)
+
+### Running Workflow 2: Report Generation
 
 ```bash
 cd ~/StocksOptionsStats/Options
 python generate_reports.py
 ```
 
-**Processing time:** Depends on data size (typically a few minutes)
+**What it does:**
+- Validates probability predictions against actual outcomes
+- Analyzes historical probability recovery patterns
+- Generates both interactive HTML reports
+
+**Processing time:** A few minutes (depending on data size)
 
 ### Output Files
 
@@ -185,15 +234,19 @@ Options that previously peaked at 90%+ probability provide a strong signal, even
 
 ```
 Options/
-├── generate_reports.py              ⭐ MAIN: Run this weekly
-├── probability_history_FULL_HISTORICAL_WITH_EXPIRY_PRICE.csv
-├── README.md                         (this file)
+├── MAIN SCRIPTS (Run these!)
+├── generate_probability_history_complete.py  ⭐ Workflow 1: Generate enriched data
+├── generate_reports.py                        ⭐ Workflow 2: Generate reports (weekly)
+├── README.md                                  (this file)
 │
-├── Output Reports (Generated)
+├── DATA FILE
+├── probability_history_FULL_HISTORICAL_WITH_EXPIRY_PRICE.csv
+│
+├── GENERATED OUTPUT (Reports)
 ├── probability_validation_report.html
 └── probability_recovery_analysis_report.html
 │
-├── Output Results (Generated)
+├── GENERATED OUTPUT (Analysis Data)
 ├── validation_results/
 │   ├── metrics_summary.csv
 │   └── calibration_[method].csv
@@ -202,13 +255,14 @@ Options/
     ├── probability_recovery_by_stock.csv
     └── probability_recovery_details.csv
 │
-├── Support Modules
+├── SUPPORT MODULES
 ├── constants.py
 ├── config_utils.py
 ├── data_loader.py
-└── probability_history_generator_FULL_HISTORICAL.py
 │
-└── Archive/                          (Superseded scripts)
+└── Archive/                          (Superseded/historical scripts)
+    ├── probability_history_generator_FULL_HISTORICAL.py
+    ├── build_probability_history_complete.py
     ├── validate_probability_predictions.py
     ├── generate_validation_report.py
     ├── analyze_probability_drops.py
@@ -228,21 +282,33 @@ Options/
 
 ---
 
-## Weekly Workflow
+## Complete Workflows
 
-Every week when you have updated data:
+### One-Time: Generate Enriched Data
+
+When you have new raw probability data:
 
 ```bash
-# 1. Ensure your probability CSV is current and in this directory
-# 2. Run the analysis
+# Generate enriched CSV (combines 2 steps into 1)
+python generate_probability_history_complete.py
+
+# This outputs: probability_history_FULL_HISTORICAL_WITH_EXPIRY_PRICE.csv
+```
+
+### Weekly: Update Analysis Reports
+
+Every week when you want to refresh the analysis:
+
+```bash
+# Update both reports with current data
 python generate_reports.py
 
-# 3. Open the reports
+# Open the generated reports
 open probability_validation_report.html
 open probability_recovery_analysis_report.html
 ```
 
-That's it! The script handles everything else.
+That's it! Each script handles everything needed for its workflow.
 
 ---
 
