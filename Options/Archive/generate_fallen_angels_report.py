@@ -44,6 +44,7 @@ methods = sorted(df_summary['ProbMethod'].unique())
 prob_bins = sorted(df_summary['CurrentProb_Bin'].unique())
 dte_bins_order = ['0-7', '8-14', '15-21', '22-28', '29-35', '36+']
 dte_bins = [b for b in dte_bins_order if b in df_summary['DTE_Bin'].values]
+thresholds = sorted(df_summary['HistoricalPeakThreshold'].unique())
 
 # Find top results
 print("Identifying top scenarios...")
@@ -60,54 +61,68 @@ print("Creating interactive charts...")
 # Prepare data as JSON for JavaScript filtering
 print("  Preparing data for interactive filtering...")
 
-# Structure: {method: {prob_bin: {dte_bin: {stats}}}}
+# Structure: {threshold: {method: {prob_bin: {dte_bin: {stats}}}}}
 chart_data = {}
 
-for method in methods:
-    chart_data[method] = {}
-    df_method = df_summary[df_summary['ProbMethod'] == method]
+for threshold in thresholds:
+    chart_data[str(threshold)] = {}
+    df_threshold = df_summary[df_summary['HistoricalPeakThreshold'] == threshold]
 
-    for prob_bin in prob_bins:
-        chart_data[method][prob_bin] = {}
-        df_pb = df_method[df_method['CurrentProb_Bin'] == prob_bin]
+    for method in methods:
+        chart_data[str(threshold)][method] = {}
+        df_method = df_threshold[df_threshold['ProbMethod'] == method]
 
-        for dte_bin in dte_bins:
-            df_dte = df_pb[df_pb['DTE_Bin'] == dte_bin]
+        for prob_bin in prob_bins:
+            chart_data[str(threshold)][method][prob_bin] = {}
+            df_pb = df_method[df_method['CurrentProb_Bin'] == prob_bin]
 
-            if len(df_dte) > 0:
-                row = df_dte.iloc[0]
-                chart_data[method][prob_bin][dte_bin] = {
-                    'fallen_n': int(row['Fallen_N']),
-                    'fallen_rate': float(row['Fallen_WorthlessRate']) if pd.notna(row['Fallen_WorthlessRate']) else None,
-                    'baseline_n': int(row['Baseline_N']),
-                    'baseline_rate': float(row['Baseline_WorthlessRate']) if pd.notna(row['Baseline_WorthlessRate']) else None,
-                    'advantage': float(row['Advantage_pp']) if pd.notna(row['Advantage_pp']) else None
-                }
+            for dte_bin in dte_bins:
+                df_dte = df_pb[df_pb['DTE_Bin'] == dte_bin]
+
+                if len(df_dte) > 0:
+                    row = df_dte.iloc[0]
+                    chart_data[str(threshold)][method][prob_bin][dte_bin] = {
+                        'fallen_n': int(row['Fallen_N']),
+                        'fallen_rate': float(row['Fallen_WorthlessRate']) if pd.notna(row['Fallen_WorthlessRate']) else None,
+                        'baseline_n': int(row['Baseline_N']),
+                        'baseline_rate': float(row['Baseline_WorthlessRate']) if pd.notna(row['Baseline_WorthlessRate']) else None,
+                        'advantage': float(row['Advantage_pp']) if pd.notna(row['Advantage_pp']) else None
+                    }
 
 chart_data_json = json.dumps(chart_data)
 
 # Stock-level data structure
+# Structure: {threshold: {stock: {method: {prob_bin: {dte_bin: {stats}}}}}}
 stock_data = {}
-for stock in sorted(df_stocks['Stock'].unique()):
-    stock_data[stock] = {}
-    df_stock = df_stocks[df_stocks['Stock'] == stock]
 
-    for method in methods:
-        stock_data[stock][method] = {}
-        df_sm = df_stock[df_stock['ProbMethod'] == method]
+for threshold in thresholds:
+    stock_data[str(threshold)] = {}
+    df_threshold = df_stocks[df_stocks['HistoricalPeakThreshold'] == threshold]
 
-        for prob_bin in prob_bins:
-            df_pb = df_sm[df_sm['CurrentProb_Bin'] == prob_bin]
+    for stock in sorted(df_threshold['Stock'].unique()):
+        stock_data[str(threshold)][stock] = {}
+        df_stock = df_threshold[df_threshold['Stock'] == stock]
 
-            if len(df_pb) > 0:
-                row = df_pb.iloc[0]
-                stock_data[stock][method][prob_bin] = {
-                    'fallen_n': int(row['Fallen_N']),
-                    'fallen_rate': float(row['Fallen_WorthlessRate']) if pd.notna(row['Fallen_WorthlessRate']) else None,
-                    'baseline_n': int(row['Baseline_N']),
-                    'baseline_rate': float(row['Baseline_WorthlessRate']) if pd.notna(row['Baseline_WorthlessRate']) else None,
-                    'advantage': float(row['Advantage_pp']) if pd.notna(row['Advantage_pp']) else None
-                }
+        for method in methods:
+            stock_data[str(threshold)][stock][method] = {}
+            df_sm = df_stock[df_stock['ProbMethod'] == method]
+
+            for prob_bin in prob_bins:
+                stock_data[str(threshold)][stock][method][prob_bin] = {}
+                df_pb = df_sm[df_sm['CurrentProb_Bin'] == prob_bin]
+
+                for dte_bin in dte_bins:
+                    df_dte = df_pb[df_pb['DTE_Bin'] == dte_bin]
+
+                    if len(df_dte) > 0:
+                        row = df_dte.iloc[0]
+                        stock_data[str(threshold)][stock][method][prob_bin][dte_bin] = {
+                            'fallen_n': int(row['Fallen_N']),
+                            'fallen_rate': float(row['Fallen_WorthlessRate']) if pd.notna(row['Fallen_WorthlessRate']) else None,
+                            'baseline_n': int(row['Baseline_N']),
+                            'baseline_rate': float(row['Baseline_WorthlessRate']) if pd.notna(row['Baseline_WorthlessRate']) else None,
+                            'advantage': float(row['Advantage_pp']) if pd.notna(row['Advantage_pp']) else None
+                        }
 
 stock_data_json = json.dumps(stock_data)
 unique_stocks = sorted(df_stocks['Stock'].unique())
@@ -282,8 +297,9 @@ html_content = f"""
     <div class="summary">
         <h2>Executive Summary</h2>
         <p>
-            This analysis tests whether options that previously had 90%+ probability but dropped to lower levels
-            still expire worthless more often than their current probability suggests.
+            This analysis tests whether options that previously had high probability (80%+) but dropped to lower levels
+            still expire worthless more often than their current probability suggests. You can now explore different
+            historical peak thresholds (80%, 85%, 90%, 95%) to see how the advantage varies.
         </p>
 
         <div class="key-findings">
@@ -295,7 +311,7 @@ html_content = f"""
             <div class="finding-card">
                 <h3>Scenario</h3>
                 <div class="value">{best_prob_bin}</div>
-                <div class="description">{best_dte} days to expiry</div>
+                <div class="description">{best_dte} days @ {int(best_scenario['HistoricalPeakThreshold']*100)}%+ threshold</div>
             </div>
             <div class="finding-card">
                 <h3>Fallen Angels</h3>
@@ -311,11 +327,13 @@ html_content = f"""
 
         <div class="winner-box">
             <h3>🏆 Key Finding: Historical High Probability is a Strong Signal!</h3>
-            <p><strong>Options that previously peaked at 90%+ probability perform significantly better than their current probability suggests.</strong></p>
+            <p><strong>Options that previously peaked at high probability levels perform significantly better than their current probability suggests.</strong></p>
             <ul>
-                <li><strong>Strongest Effect:</strong> 36+ days to expiry with current probability 60-70%</li>
-                <li><strong>Best Method:</strong> Bayesian Calibrated shows +43pp advantage</li>
-                <li><strong>Strategy Implication:</strong> When writing puts at 60-70% probability, prioritize "fallen angels" for much safer positions</li>
+                <li><strong>Flexible Thresholds:</strong> Compare 80%, 85%, 90%, and 95% historical peak thresholds</li>
+                <li><strong>Strongest Effect:</strong> Typically seen with 36+ calendar days to expiry and current probability 60-70%</li>
+                <li><strong>Stock Comparison:</strong> Filter by specific stocks to identify best candidates</li>
+                <li><strong>Strategy Implication:</strong> When writing puts, prioritize "fallen angels" for much safer positions</li>
+                <li><strong>Time Measurement:</strong> All Days to Expiry (DTE) values are in calendar days, not market days</li>
             </ul>
         </div>
     </div>
@@ -324,11 +342,19 @@ html_content = f"""
         <h2>Interactive Analysis</h2>
         <div class="info-box">
             <strong>How to use:</strong> Select filters below to see how "fallen angels" compare to baseline options
-            across different scenarios. Green bars show fallen angels (options that peaked at 90%+), red bars show
-            baseline options (never reached 90%).
+            across different scenarios. Green bars show fallen angels (options that peaked at the selected threshold),
+            red bars show baseline options (never reached the threshold).
+            <br><br>
+            <strong>Note:</strong> Days to Expiry (DTE) are measured in <strong>calendar days</strong>, not market/business days.
         </div>
 
         <div class="controls">
+            <div class="control-group">
+                <label for="thresholdSelect">Historical Peak Threshold:</label>
+                <select id="thresholdSelect">
+                    {''.join([f'<option value="{t}" {"selected" if t == 0.90 else ""}>{int(t*100)}%+</option>' for t in thresholds])}
+                </select>
+            </div>
             <div class="control-group">
                 <label for="methodSelect">Probability Method:</label>
                 <select id="methodSelect">
@@ -354,10 +380,11 @@ html_content = f"""
     </div>
 
     <div class="summary">
-        <h2>Top 5 Scenarios</h2>
+        <h2>Top 5 Scenarios (Overall Best)</h2>
         <table>
             <thead>
                 <tr>
+                    <th>Threshold</th>
                     <th>Method</th>
                     <th>Current Prob</th>
                     <th>DTE</th>
@@ -369,6 +396,7 @@ html_content = f"""
             <tbody>
                 {''.join([f'''
                 <tr>
+                    <td>{int(row['HistoricalPeakThreshold']*100)}%+</td>
                     <td>{row['ProbMethod']}</td>
                     <td>{row['CurrentProb_Bin']}</td>
                     <td>{row['DTE_Bin']} days</td>
@@ -421,55 +449,37 @@ html_content = f"""
     var colorBaseline = '{COLORS['Baseline']}';
 
     function updateChart() {{
+        var threshold = document.getElementById('thresholdSelect').value;
         var method = document.getElementById('methodSelect').value;
         var probBin = document.getElementById('probBinSelect').value;
         var stock = document.getElementById('stockSelect').value;
 
+        var thresholdPct = Math.round(parseFloat(threshold) * 100);
         var data;
         var title;
 
         if (stock === 'All Stocks') {{
-            data = chartData[method][probBin];
-            title = 'Fallen Angels vs Baseline - ' + method + ' (' + probBin + ')';
-        }} else {{
-            if (!stockData[stock] || !stockData[stock][method] || !stockData[stock][method][probBin]) {{
+            // Check if data exists for this threshold
+            if (!chartData[threshold] || !chartData[threshold][method] || !chartData[threshold][method][probBin]) {{
                 document.getElementById('comparisonChart').innerHTML = '<p style="text-align: center; color: #dc3545;">No data available for this combination</p>';
                 return;
             }}
-            // For stock view, we don't have DTE breakdown, so show single comparison
-            var stockInfo = stockData[stock][method][probBin];
-            var traces = [
-                {{
-                    x: ['Fallen Angels', 'Baseline'],
-                    y: [stockInfo.fallen_rate * 100, stockInfo.baseline_rate * 100],
-                    type: 'bar',
-                    marker: {{
-                        color: [colorFallen, colorBaseline]
-                    }},
-                    text: [
-                        stockInfo.fallen_rate !== null ? stockInfo.fallen_rate.toFixed(1) + '% (' + stockInfo.fallen_n.toLocaleString() + ')' : 'N/A',
-                        stockInfo.baseline_rate !== null ? stockInfo.baseline_rate.toFixed(1) + '% (' + stockInfo.baseline_n.toLocaleString() + ')' : 'N/A'
-                    ],
-                    textposition: 'outside',
-                    hovertemplate: '%{{x}}<br>Worthless Rate: %{{y:.1f}}%<br>%{{text}}<extra></extra>'
-                }}
-            ];
-
-            var layout = {{
-                title: stock + ' - ' + method + ' (' + probBin + ')',
-                yaxis: {{
-                    title: 'Worthless Rate (%)',
-                    range: [0, 100]
-                }},
-                height: 500
-            }};
-
-            Plotly.newPlot('comparisonChart', traces, layout);
-            return;
+            data = chartData[threshold][method][probBin];
+            title = 'Fallen Angels (' + thresholdPct + '%+ peak) vs Baseline - ' + method + ' (' + probBin + ')';
+        }} else {{
+            // For stock view, also show DTE breakdown
+            if (!stockData[threshold] || !stockData[threshold][stock] || !stockData[threshold][stock][method] || !stockData[threshold][stock][method][probBin]) {{
+                document.getElementById('comparisonChart').innerHTML = '<p style="text-align: center; color: #dc3545;">No data available for this combination</p>';
+                return;
+            }}
+            data = stockData[threshold][stock][method][probBin];
+            title = stock + ' - ' + method + ' (' + probBin + ') - Peak Threshold: ' + thresholdPct + '%+';
         }}
 
-        // All stocks view - show by DTE
+        // Show by DTE for both "All Stocks" and individual stocks
         var dteBins = {json.dumps(dte_bins)};
+        // Reverse the order to show highest DTE first
+        dteBins = dteBins.slice().reverse();
         var fallenRates = [];
         var baselineRates = [];
         var fallenText = [];
@@ -496,7 +506,7 @@ html_content = f"""
             {{
                 x: dteBins,
                 y: fallenRates,
-                name: 'Fallen Angels (peaked at 90%+)',
+                name: 'Fallen Angels (peaked at ' + thresholdPct + '%+)',
                 type: 'bar',
                 marker: {{color: colorFallen}},
                 text: fallenText,
@@ -506,7 +516,7 @@ html_content = f"""
             {{
                 x: dteBins,
                 y: baselineRates,
-                name: 'Baseline (never hit 90%)',
+                name: 'Baseline (never hit ' + thresholdPct + '%)',
                 type: 'bar',
                 marker: {{color: colorBaseline}},
                 text: baselineText,
@@ -518,7 +528,7 @@ html_content = f"""
         var layout = {{
             title: title,
             xaxis: {{
-                title: 'Days to Expiry',
+                title: 'Days to Expiry (Calendar Days)',
                 type: 'category'
             }},
             yaxis: {{
@@ -528,14 +538,18 @@ html_content = f"""
             barmode: 'group',
             height: 500,
             legend: {{
-                x: 0.02,
-                y: 0.98
+                orientation: 'h',
+                x: 0.5,
+                xanchor: 'center',
+                y: -0.2,
+                yanchor: 'top'
             }}
         }};
 
         Plotly.newPlot('comparisonChart', traces, layout);
     }}
 
+    document.getElementById('thresholdSelect').addEventListener('change', updateChart);
     document.getElementById('methodSelect').addEventListener('change', updateChart);
     document.getElementById('probBinSelect').addEventListener('change', updateChart);
     document.getElementById('stockSelect').addEventListener('change', updateChart);

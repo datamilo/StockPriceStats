@@ -247,7 +247,7 @@ This interactive HTML report validates the accuracy of 5 different probability p
 
 **📅 Days-to-Expiry (DTE) Analysis**
 - Analyze how prediction accuracy varies based on time to expiration
-- **IMPORTANT: Uses CALENDAR DAYS (not business days)** between prediction date and expiry
+- **IMPORTANT: All DTE measurements use CALENDAR DAYS (not business/market days)** between prediction date and expiry
 - 7 granular bins for detailed analysis:
   - 0-3 days (very short-term)
   - 4-7 days
@@ -303,30 +303,30 @@ This interactive HTML report validates the accuracy of 5 different probability p
 
 ---
 
-## "Fallen Angels" Analysis
+## Historical Probability Recovery Analysis
 
-**Location:** `Options/fallen_angels_report.html`
+**Location:** `Options/probability_recovery_analysis_report.html`
 
-This groundbreaking analysis discovered that **options with historical high probability (90%+) that dropped to lower levels still expire worthless FAR more often** than their current probability suggests.
+This analysis examines options that previously reached high probability levels (80%+) but have since declined. The key finding: **options with historical high probability still expire worthless far more often** than their current probability suggests.
 
 ### Key Discovery: +43 Percentage Point Advantage!
 
 **The Finding:** Options currently at 60-70% probability that previously peaked at 90%+ expire worthless **84.8%** of the time, while baseline options at the same 60-70% probability only expire worthless **41.8%** of the time.
 
-**This is a massive +43pp advantage** - the historical high probability is a powerful additional signal!
+**This is a significant +43pp advantage** - the historical high probability peak is a powerful additional signal!
 
-### What Are "Fallen Angels"?
+### What Is Historical Probability Recovery?
 
 Options that:
-1. ✅ Previously reached 90%+ probability of expiring worthless at some point during their life
-2. ✅ Subsequently dropped to lower probabilities (60-90%) as the stock price moved
+1. ✅ Previously reached 80-95%+ probability of expiring worthless at some point during their life
+2. ✅ Subsequently declined to lower probabilities (60-90%) as market conditions changed
 3. ✅ Still retain the fundamental strength indicated by their historical peak
 
 ### Strategy Implications for Put Writing
 
 **Traditional Approach:** Write puts at 70% probability → expect 70% success rate
 
-**Fallen Angels Approach:** Write puts at 70% probability that were previously 90%+ → expect **85-90% success rate!**
+**Recovery Approach:** Write puts at 70% probability that previously peaked at 90%+ → expect **85-90% success rate!**
 
 This means:
 - **Much safer positions** for the same premium
@@ -336,15 +336,17 @@ This means:
 ### When the Effect is Strongest
 
 **Best Scenarios (by advantage):**
-1. **36+ days to expiry:** +28pp to +43pp advantage
+1. **36+ calendar days to expiry:** +28pp to +43pp advantage
 2. **Current probability 60-70%:** Largest absolute advantage
 3. **Bayesian Calibrated method:** Clearest signal (+43pp)
 4. **Current probability 70-80%:** Still strong at +16pp to +34pp
 
+**Note:** All Days to Expiry (DTE) values are measured in **calendar days**, not market/business days.
+
 ### How to Use
 
 1. **Open the Report:**
-   - Open `Options/fallen_angels_report.html` in your browser
+   - Open `Options/probability_recovery_analysis_report.html` in your browser
    - Interactive filtering by method, current probability, stock, and DTE
 
 2. **Identify Opportunities:**
@@ -353,9 +355,9 @@ This means:
    - Review advantage by days to expiry
 
 3. **Apply in Practice:**
-   - Track options over time to identify when they peak at 90%+
-   - When they drop to 60-80%, prioritize these for put writing
-   - Focus on longer-dated options (36+ days) for maximum advantage
+   - Track options over time to identify when they peak at high probabilities
+   - When they decline to 60-80%, prioritize these for put writing
+   - Focus on longer-dated options (36+ calendar days) for maximum advantage
 
 ### Analysis Details
 
@@ -365,16 +367,16 @@ This means:
 - Full breakdown by: current probability (60-70%, 70-80%, 80-90%), days to expiry (7 bins), and stock (75 stocks)
 
 **Top 3 Scenarios:**
-1. Bayesian Calibrated | 60-70% | 36+ days: **+43.03pp** (33,333 fallen angels)
-2. Original Black-Scholes | 60-70% | 36+ days: **+39.61pp** (32,984 fallen angels)
-3. Bias Corrected | 60-70% | 36+ days: **+38.15pp** (30,848 fallen angels)
+1. Bayesian Calibrated | 60-70% | 36+ days: **+43.03pp** (33,333 recovery candidates)
+2. Original Black-Scholes | 60-70% | 36+ days: **+39.61pp** (32,984 recovery candidates)
+3. Bias Corrected | 60-70% | 36+ days: **+38.15pp** (30,848 recovery candidates)
 
 ### Files Generated
 
-- `Options/fallen_angels_report.html` - Interactive visualization (203 KB)
-- `Options/fallen_angels_results/fallen_angels_summary.csv` - 90 scenarios analyzed
-- `Options/fallen_angels_results/fallen_angels_by_stock.csv` - 1,097 stock-specific results
-- `Options/fallen_angels_results/fallen_angels_details.csv` - Full dataset (2.96M records)
+- `Options/probability_recovery_analysis_report.html` - Interactive visualization
+- `Options/probability_recovery_results/probability_recovery_summary.csv` - 90 scenarios analyzed
+- `Options/probability_recovery_results/probability_recovery_by_stock.csv` - Stock-specific results
+- `Options/probability_recovery_results/probability_recovery_details.csv` - Full detailed dataset
 
 ### Important Caveats
 
@@ -511,7 +513,7 @@ git push origin main
 | Component | Location | Description |
 |-----------|----------|-------------|
 | **Project Overview** | This file | High-level summary |
-| **Fallen Angels Analysis** | `Options/fallen_angels_report.html` | **⭐ NEW!** Historical probability advantage (+43pp) |
+| **Historical Probability Recovery** | `Options/probability_recovery_analysis_report.html` | **⭐ NEW!** Historical probability advantage (+43pp) |
 | **Probability Validation** | `Options/probability_validation_report.html` | Interactive report with stock & DTE filtering |
 | **H001 Dashboard** | `hypotheses/h001_multi_period_low_support/multi_period_dashboard.html` | Interactive results viewer |
 | **H001 Details** | `hypotheses/h001_multi_period_low_support/METHODOLOGY_AND_FINDINGS.md` | Comprehensive analysis |
@@ -520,7 +522,7 @@ git push origin main
 
 ---
 
-*Last Updated: 2025-11-12*
-*Active Components: H001 hypothesis + Probability Validation + Fallen Angels Analysis*
-*Status: H001 complete; Validation & Fallen Angels analysis active with interactive reports*
-*Data Workflow: Fully automated with incremental updates*
+*Last Updated: 2025-11-14*
+*Active Components: H001 hypothesis + Probability Validation + Historical Probability Recovery Analysis*
+*Status: H001 complete; Validation & Recovery analysis active with consolidated weekly workflow*
+*Data Workflow: Fully automated with consolidated report generation script*
