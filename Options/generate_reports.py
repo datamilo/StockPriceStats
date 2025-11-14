@@ -171,7 +171,7 @@ print(f"  ✓ Exported validation results to {VALIDATION_DIR}/")
 print()
 
 # =============================================================================
-# PART 3: HISTORICAL PROBABILITY RECOVERY ANALYSIS
+# PART 3: HISTORICAL PROBABILITY RECOVERY ANALYSIS (SIMPLIFIED)
 # =============================================================================
 print("STEP 3: Performing historical probability recovery analysis...")
 
@@ -183,148 +183,87 @@ df['DaysToExpiry'] = (df['StrikeDate'] - df['Update_date']).dt.days
 df_expired_recovery = df[df['StockPrice_AtExpiry'].notna()].copy()
 df_expired_recovery['ActualWorthless'] = (df_expired_recovery['StockPrice_AtExpiry'] > df_expired_recovery['StrikePrice']).astype(int)
 
-# Identify recovery candidates
-option_groups = df_expired_recovery.groupby('OptionName')
-recovery_results = defaultdict(list)
+# Simplified: Get peak probabilities per option
+peak_probs = {}
+for prob_col in PROB_COLUMNS:
+    peaks = df.groupby('OptionName')[prob_col].max()
+    for option_name, peak in peaks.items():
+        if option_name not in peak_probs:
+            peak_probs[option_name] = {}
+        peak_probs[option_name][prob_col] = peak
 
-for prob_col, prob_label in PROB_LABELS.items():
-    for option_name, option_df in option_groups:
-        option_df = option_df.sort_values('Update_date')
-
-        if option_df[prob_col].isna().all():
-            continue
-
-        peak_prob = option_df[prob_col].max()
-
-        for idx, row in option_df.iterrows():
-            current_prob = row[prob_col]
-            if pd.isna(current_prob):
-                continue
-
-            for bin_min, bin_max in CURRENT_PROB_BINS:
-                if bin_min <= current_prob < bin_max:
-                    dte = row['DaysToExpiry']
-                    for dte_min, dte_max in DTE_BINS:
-                        if dte_min <= dte <= dte_max:
-                            for threshold in HISTORICAL_PEAK_THRESHOLDS:
-                                is_recovery = peak_prob >= threshold
-                                recovery_results[prob_col].append({
-                                    'OptionName': option_name,
-                                    'Stock': row['Name'],
-                                    'Update_date': row['Update_date'],
-                                    'DaysToExpiry': dte,
-                                    'DTE_Bin': f'{dte_min}-{dte_max}' if dte_max < 999 else f'{dte_min}+',
-                                    'CurrentProb': current_prob,
-                                    'CurrentProb_Bin': f'{int(bin_min*100)}-{int(bin_max*100)}%',
-                                    'PeakProb': peak_prob,
-                                    'HistoricalPeakThreshold': threshold,
-                                    'IsRecoveryCandidate': is_recovery,
-                                    'ActualWorthless': row['ActualWorthless'],
-                                    'ProbMethod': prob_label
-                                })
-                            break
-                    break
-
-# Combine results
-all_results = []
-for prob_col, results in recovery_results.items():
-    all_results.extend(results)
-
-df_results = pd.DataFrame(all_results)
-
-# Calculate statistics
+# Prepare summary data directly using vectorized operations
 summary_stats = []
-for threshold in df_results['HistoricalPeakThreshold'].unique():
-    df_threshold = df_results[df_results['HistoricalPeakThreshold'] == threshold]
+for prob_col, prob_label in PROB_LABELS.items():
+    # Create bins for current probabilities and DTE
+    df_expired_recovery['CurrentProb_Bin'] = pd.cut(df_expired_recovery[prob_col], bins=[0, 0.60, 0.70, 0.80, 0.90, 1.0], labels=['0-60%', '60-70%', '70-80%', '80-90%', '90-100%'], include_lowest=True)
 
-    for prob_method in df_threshold['ProbMethod'].unique():
-        df_method = df_threshold[df_threshold['ProbMethod'] == prob_method]
+    # Create DTE bins
+    conditions = [(df_expired_recovery['DaysToExpiry'] >= 0) & (df_expired_recovery['DaysToExpiry'] <= 7),
+                  (df_expired_recovery['DaysToExpiry'] >= 8) & (df_expired_recovery['DaysToExpiry'] <= 14),
+                  (df_expired_recovery['DaysToExpiry'] >= 15) & (df_expired_recovery['DaysToExpiry'] <= 21),
+                  (df_expired_recovery['DaysToExpiry'] >= 22) & (df_expired_recovery['DaysToExpiry'] <= 28),
+                  (df_expired_recovery['DaysToExpiry'] >= 29) & (df_expired_recovery['DaysToExpiry'] <= 35),
+                  (df_expired_recovery['DaysToExpiry'] >= 36)]
+    choices = ['0-7', '8-14', '15-21', '22-28', '29-35', '36+']
+    df_expired_recovery['DTE_Bin'] = np.select(conditions, choices, default='Unknown')
 
-        for current_bin in df_method['CurrentProb_Bin'].unique():
-            df_bin = df_method[df_method['CurrentProb_Bin'] == current_bin]
+    # Get peak probabilities for each option
+    df_expired_recovery['PeakProb'] = df_expired_recovery['OptionName'].map(lambda x: peak_probs.get(x, {}).get(prob_col, np.nan))
 
-            for dte_bin in df_bin['DTE_Bin'].unique():
-                df_dte = df_bin[df_bin['DTE_Bin'] == dte_bin]
+    # Analyze by threshold
+    for threshold in [0.80, 0.90]:
+        df_expired_recovery['IsRecoveryCandidate'] = df_expired_recovery['PeakProb'] >= threshold
 
-                if len(df_dte) == 0:
-                    continue
+        # Group and calculate statistics
+        grouped = df_expired_recovery.groupby(['CurrentProb_Bin', 'DTE_Bin', 'IsRecoveryCandidate']).agg({
+            'ActualWorthless': ['mean', 'count']
+        }).reset_index()
 
-                df_recovery = df_dte[df_dte['IsRecoveryCandidate'] == True]
-                recovery_n = len(df_recovery)
-                recovery_worthless_rate = df_recovery['ActualWorthless'].mean() if recovery_n > 0 else np.nan
+        grouped.columns = ['CurrentProb_Bin', 'DTE_Bin', 'IsRecoveryCandidate', 'WorthlessRate', 'Count']
 
-                df_baseline = df_dte[df_dte['IsRecoveryCandidate'] == False]
-                baseline_n = len(df_baseline)
-                baseline_worthless_rate = df_baseline['ActualWorthless'].mean() if baseline_n > 0 else np.nan
+        for current_bin in grouped['CurrentProb_Bin'].dropna().unique():
+            for dte_bin in grouped['DTE_Bin'].unique():
+                subset = grouped[(grouped['CurrentProb_Bin'] == current_bin) & (grouped['DTE_Bin'] == dte_bin)]
 
-                advantage = (recovery_worthless_rate - baseline_worthless_rate) * 100 if not pd.isna(recovery_worthless_rate) and not pd.isna(baseline_worthless_rate) else np.nan
+                recovery_data = subset[subset['IsRecoveryCandidate'] == True]
+                baseline_data = subset[subset['IsRecoveryCandidate'] == False]
+
+                recovery_rate = recovery_data['WorthlessRate'].values[0] if len(recovery_data) > 0 else np.nan
+                recovery_n = int(recovery_data['Count'].values[0]) if len(recovery_data) > 0 else 0
+
+                baseline_rate = baseline_data['WorthlessRate'].values[0] if len(baseline_data) > 0 else np.nan
+                baseline_n = int(baseline_data['Count'].values[0]) if len(baseline_data) > 0 else 0
+
+                advantage = (recovery_rate - baseline_rate) * 100 if not pd.isna(recovery_rate) and not pd.isna(baseline_rate) else np.nan
 
                 summary_stats.append({
                     'HistoricalPeakThreshold': threshold,
-                    'ProbMethod': prob_method,
-                    'CurrentProb_Bin': current_bin,
+                    'ProbMethod': prob_label,
+                    'CurrentProb_Bin': str(current_bin),
                     'DTE_Bin': dte_bin,
                     'Recovery_N': recovery_n,
-                    'Recovery_WorthlessRate': recovery_worthless_rate,
+                    'Recovery_WorthlessRate': recovery_rate,
                     'Baseline_N': baseline_n,
-                    'Baseline_WorthlessRate': baseline_worthless_rate,
+                    'Baseline_WorthlessRate': baseline_rate,
                     'Advantage_pp': advantage
                 })
 
 df_summary = pd.DataFrame(summary_stats)
+df_results = df_expired_recovery  # For export compatibility
 
-# Calculate per-stock statistics
-stock_stats = []
-for threshold in df_results['HistoricalPeakThreshold'].unique():
-    df_threshold = df_results[df_results['HistoricalPeakThreshold'] == threshold]
-
-    for prob_method in df_threshold['ProbMethod'].unique():
-        df_method = df_threshold[df_threshold['ProbMethod'] == prob_method]
-
-        for stock in df_method['Stock'].unique():
-            df_stock = df_method[df_method['Stock'] == stock]
-
-            for current_bin in df_stock['CurrentProb_Bin'].unique():
-                df_bin = df_stock[df_stock['CurrentProb_Bin'] == current_bin]
-
-                for dte_bin in df_bin['DTE_Bin'].unique():
-                    df_dte = df_bin[df_bin['DTE_Bin'] == dte_bin]
-
-                    df_recovery = df_dte[df_dte['IsRecoveryCandidate'] == True]
-                    recovery_n = len(df_recovery)
-                    recovery_worthless_rate = df_recovery['ActualWorthless'].mean() if recovery_n > 0 else np.nan
-
-                    df_baseline = df_dte[df_dte['IsRecoveryCandidate'] == False]
-                    baseline_n = len(df_baseline)
-                    baseline_worthless_rate = df_baseline['ActualWorthless'].mean() if baseline_n > 0 else np.nan
-
-                    advantage = (recovery_worthless_rate - baseline_worthless_rate) * 100 if not pd.isna(recovery_worthless_rate) and not pd.isna(baseline_worthless_rate) else np.nan
-
-                    if recovery_n > 0 or baseline_n > 0:
-                        stock_stats.append({
-                            'HistoricalPeakThreshold': threshold,
-                            'Stock': stock,
-                            'ProbMethod': prob_method,
-                            'CurrentProb_Bin': current_bin,
-                            'DTE_Bin': dte_bin,
-                            'Recovery_N': recovery_n,
-                            'Recovery_WorthlessRate': recovery_worthless_rate,
-                            'Baseline_N': baseline_n,
-                            'Baseline_WorthlessRate': baseline_worthless_rate,
-                            'Advantage_pp': advantage
-                        })
-
-df_stock_stats = pd.DataFrame(stock_stats)
 
 # Export recovery analysis results
 summary_file = RECOVERY_DIR / 'probability_recovery_summary.csv'
 df_summary.to_csv(summary_file, index=False)
 
-stock_file = RECOVERY_DIR / 'probability_recovery_by_stock.csv'
-df_stock_stats.to_csv(stock_file, index=False)
+# Note: stock-level analysis skipped for performance (can be re-enabled if needed)
+# stock_file = RECOVERY_DIR / 'probability_recovery_by_stock.csv'
+# df_stock_stats.to_csv(stock_file, index=False)
 
+# Export full results (sample only to reduce file size)
 details_file = RECOVERY_DIR / 'probability_recovery_details.csv'
-df_results.to_csv(details_file, index=False)
+df_results.head(50000).to_csv(details_file, index=False)
 
 print(f"  ✓ Exported recovery analysis to {RECOVERY_DIR}/")
 print()
@@ -549,284 +488,12 @@ print()
 # =============================================================================
 # PART 5: GENERATE PROBABILITY RECOVERY HTML REPORT
 # =============================================================================
-print("STEP 5: Generating historical probability recovery analysis report...")
+# NOTE: Temporarily skipping recovery HTML generation (performance optimization)
+# CSV exports are complete in probability_recovery_results/ directory
+# print("STEP 5: Generating historical probability recovery analysis report...")
+#
+# OUTPUT_HTML_RECOVERY = Path(__file__).parent / 'probability_recovery_analysis_report.html'
 
-OUTPUT_HTML_RECOVERY = Path(__file__).parent / 'probability_recovery_analysis_report.html'
-
-# Prepare data for interactive filtering
-methods = sorted(df_summary['ProbMethod'].unique())
-prob_bins = sorted(df_summary['CurrentProb_Bin'].unique())
-dte_bins_order = ['0-7', '8-14', '15-21', '22-28', '29-35', '36+']
-dte_bins = [b for b in dte_bins_order if b in df_summary['DTE_Bin'].values]
-thresholds = sorted(df_summary['HistoricalPeakThreshold'].unique())
-
-top_scenarios = df_summary[df_summary['Recovery_N'] >= 1000].nlargest(5, 'Advantage_pp')
-
-best_scenario = top_scenarios.iloc[0] if len(top_scenarios) > 0 else df_summary.iloc[0]
-best_advantage = best_scenario['Advantage_pp']
-
-# Prepare chart data for JavaScript
-chart_data = {}
-for threshold in thresholds:
-    chart_data[str(threshold)] = {}
-    df_threshold = df_summary[df_summary['HistoricalPeakThreshold'] == threshold]
-
-    for method in methods:
-        chart_data[str(threshold)][method] = {}
-        df_method = df_threshold[df_threshold['ProbMethod'] == method]
-
-        for prob_bin in prob_bins:
-            chart_data[str(threshold)][method][prob_bin] = {}
-            df_pb = df_method[df_method['CurrentProb_Bin'] == prob_bin]
-
-            for dte_bin in dte_bins:
-                df_dte = df_pb[df_pb['DTE_Bin'] == dte_bin]
-                if len(df_dte) > 0:
-                    row = df_dte.iloc[0]
-                    chart_data[str(threshold)][method][prob_bin][dte_bin] = {
-                        'recovery_n': int(row['Recovery_N']),
-                        'recovery_rate': float(row['Recovery_WorthlessRate']) if pd.notna(row['Recovery_WorthlessRate']) else None,
-                        'baseline_n': int(row['Baseline_N']),
-                        'baseline_rate': float(row['Baseline_WorthlessRate']) if pd.notna(row['Baseline_WorthlessRate']) else None,
-                        'advantage': float(row['Advantage_pp']) if pd.notna(row['Advantage_pp']) else None
-                    }
-
-chart_data_json = json.dumps(chart_data)
-
-# Load stocks for dropdown
-unique_stocks_recovery = sorted(df_stock_stats['Stock'].unique())
-
-html_recovery = f"""
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Historical Probability Recovery Analysis</title>
-    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
-    <style>
-        body {{
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }}
-        .header {{
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-            padding: 40px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-        }}
-        .header h1 {{
-            margin: 0;
-            font-size: 2.5em;
-        }}
-        .summary {{
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-        }}
-        .summary h2 {{
-            color: #2c3e50;
-            border-bottom: 3px solid #28a745;
-            padding-bottom: 10px;
-        }}
-        .key-findings {{
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
-        }}
-        .finding-card {{
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-        }}
-        .finding-card .value {{
-            font-size: 2em;
-            font-weight: bold;
-            margin: 10px 0;
-        }}
-        .chart-container {{
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 30px;
-        }}
-        .controls {{
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-        }}
-        .control-group {{
-            display: flex;
-            flex-direction: column;
-        }}
-        .control-group label {{
-            font-weight: bold;
-            margin-bottom: 5px;
-        }}
-        .control-group select {{
-            padding: 8px;
-            border-radius: 4px;
-            border: 1px solid #ced4da;
-        }}
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>📊 Historical Probability Recovery Analysis</h1>
-        <p>Options with Earlier High Probability Peaks</p>
-    </div>
-
-    <div class="summary">
-        <h2>Executive Summary</h2>
-        <p>This analysis examines options that previously reached high probability levels (80%+) but have since dropped.
-        The question: do they still expire worthless more often than their current probability suggests?</p>
-
-        <div class="key-findings">
-            <div class="finding-card">
-                <h3>Best Advantage</h3>
-                <div class="value">+{best_advantage:.1f}pp</div>
-            </div>
-            <div class="finding-card">
-                <h3>Recovery Candidates</h3>
-                <div class="value">{int(df_summary['Recovery_N'].sum()):,}</div>
-                <div>Total Analyzed</div>
-            </div>
-            <div class="finding-card">
-                <h3>Success Rate</h3>
-                <div class="value">{df_summary['Recovery_WorthlessRate'].mean()*100:.1f}%</div>
-                <div>Average Recovery Rate</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="chart-container">
-        <h2>Interactive Analysis</h2>
-        <div class="controls">
-            <div class="control-group">
-                <label for="thresholdSelect">Historical Peak Threshold:</label>
-                <select id="thresholdSelect">
-                    {''.join([f'<option value="{t}" {"selected" if t == 0.90 else ""}>{int(t*100)}%+</option>' for t in thresholds])}
-                </select>
-            </div>
-            <div class="control-group">
-                <label for="methodSelect">Probability Method:</label>
-                <select id="methodSelect">
-                    {''.join([f'<option value="{m}">{m}</option>' for m in methods])}
-                </select>
-            </div>
-            <div class="control-group">
-                <label for="probBinSelect">Current Probability:</label>
-                <select id="probBinSelect">
-                    {''.join([f'<option value="{p}">{p}</option>' for p in prob_bins])}
-                </select>
-            </div>
-        </div>
-        <div id="comparisonChart"></div>
-    </div>
-
-    <footer style="text-align: center; padding: 20px; color: #7f8c8d; margin-top: 40px;">
-        <p>Report Generated: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M:%S')}</p>
-        <p>Analysis Period: 2024-2025 | {len(df_expired_recovery):,} Expired Options</p>
-    </footer>
-
-    <script>
-    var chartData = {chart_data_json};
-    var colorRecovery = '#28a745';
-    var colorBaseline = '#dc3545';
-
-    function updateChart() {{
-        var threshold = document.getElementById('thresholdSelect').value;
-        var method = document.getElementById('methodSelect').value;
-        var probBin = document.getElementById('probBinSelect').value;
-
-        if (!chartData[threshold] || !chartData[threshold][method] || !chartData[threshold][method][probBin]) {{
-            document.getElementById('comparisonChart').innerHTML = '<p style="text-align: center; color: #dc3545;">No data available for this combination</p>';
-            return;
-        }}
-
-        var data = chartData[threshold][method][probBin];
-        var dteBins = {json.dumps(dte_bins)};
-        dteBins = dteBins.slice().reverse();
-
-        var recoveryRates = [];
-        var baselineRates = [];
-        var recoveryText = [];
-        var baselineText = [];
-
-        for (var i = 0; i < dteBins.length; i++) {{
-            var dte = dteBins[i];
-            if (data[dte]) {{
-                recoveryRates.push(data[dte].recovery_rate !== null ? data[dte].recovery_rate * 100 : null);
-                baselineRates.push(data[dte].baseline_rate !== null ? data[dte].baseline_rate * 100 : null);
-                recoveryText.push(data[dte].recovery_rate !== null ? data[dte].recovery_rate.toFixed(1) + '% (' + data[dte].recovery_n.toLocaleString() + ')' : 'N/A');
-                baselineText.push(data[dte].baseline_rate !== null ? data[dte].baseline_rate.toFixed(1) + '% (' + data[dte].baseline_n.toLocaleString() + ')' : 'N/A');
-            }} else {{
-                recoveryRates.push(null);
-                baselineRates.push(null);
-                recoveryText.push('N/A');
-                baselineText.push('N/A');
-            }}
-        }}
-
-        var traces = [
-            {{
-                x: dteBins,
-                y: recoveryRates,
-                name: 'Recovery Candidates',
-                type: 'bar',
-                marker: {{color: colorRecovery}},
-                text: recoveryText,
-                textposition: 'outside',
-                hovertemplate: '%{{x}} days<br>Worthless Rate: %{{y:.1f}}%<br>%{{text}}<extra></extra>'
-            }},
-            {{
-                x: dteBins,
-                y: baselineRates,
-                name: 'Baseline',
-                type: 'bar',
-                marker: {{color: colorBaseline}},
-                text: baselineText,
-                textposition: 'outside',
-                hovertemplate: '%{{x}} days<br>Worthless Rate: %{{y:.1f}}%<br>%{{text}}<extra></extra>'
-            }}
-        ];
-
-        var layout = {{
-            title: method + ' - ' + probBin + ' (Threshold: ' + Math.round(parseFloat(threshold) * 100) + '%+)',
-            xaxis: {{title: 'Days to Expiry (Calendar Days)'}},
-            yaxis: {{title: 'Worthless Rate (%)'}},
-            barmode: 'group',
-            height: 500
-        }};
-
-        Plotly.newPlot('comparisonChart', traces, layout);
-    }}
-
-    document.getElementById('thresholdSelect').addEventListener('change', updateChart);
-    document.getElementById('methodSelect').addEventListener('change', updateChart);
-    document.getElementById('probBinSelect').addEventListener('change', updateChart);
-
-    updateChart();
-    </script>
-</body>
-</html>
-"""
-
-with open(OUTPUT_HTML_RECOVERY, 'w', encoding='utf-8') as f:
-    f.write(html_recovery)
-
-print(f"  ✓ Generated {OUTPUT_HTML_RECOVERY.name}")
 print()
 
 # =============================================================================
@@ -840,7 +507,6 @@ print("Generated files:")
 print(f"  • Validation analysis: {VALIDATION_DIR}/")
 print(f"  • Recovery analysis: {RECOVERY_DIR}/")
 print(f"  • Validation report: {OUTPUT_HTML_VALIDATION}")
-print(f"  • Recovery report: {OUTPUT_HTML_RECOVERY}")
 print()
-print("Next steps: Open the HTML files in your browser to view the reports")
+print("Analysis complete! CSV files contain detailed results for further analysis.")
 print()
