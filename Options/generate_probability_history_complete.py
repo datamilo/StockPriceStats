@@ -29,13 +29,16 @@ from functools import partial
 from tqdm import tqdm
 
 # Import local utilities
-from data_loader import calculate_business_days_between, calculate_business_days_vectorized
-from constants import TRADING_DAYS_PER_YEAR
+from utils import (
+    calculate_business_days_between,
+    calculate_business_days_vectorized,
+    TRADING_DAYS_PER_YEAR,
+    get_path_config
+)
 
 try:
-    from config_utils import get_path_config
     PATH_CONFIG = get_path_config()
-except ImportError:
+except (ImportError, FileNotFoundError):
     PATH_CONFIG = None
 
 # Parallel processing configuration
